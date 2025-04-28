@@ -3,18 +3,37 @@ import os
 import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from rnn import RNNModel
+from rnn import CustomDataset
+import torch
 
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class MyModel:
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
 
+    def __init__(self, model_type=RNNModel):
+        self.model_type = model_type
+        if model_type == RNNModel:
+            # Initialize the RNN model with appropriate parameters
+            self.model = RNNModel(
+                vocab_size=10000,  # Example vocab size
+                embedding_dim=128,  # Example embedding dimension
+                hidden_dim=256,  # Example hidden dimension
+            )
+
     @classmethod
     def load_training_data(cls):
-        # your code here
-        # this particular model doesn't train
-        return []
+        # load the training data from a CSV file
+        dataset = CustomDataset(
+            raw_text_file='output.txt',  # Path to your raw text file
+            spm_model_path='spm.model',  # Path to your SentencePiece model
+            seq_length=30,  # Length of input sequences
+        )
+
+        return dataset
 
     @classmethod
     def load_test_data(cls, fname):
@@ -32,9 +51,8 @@ class MyModel:
             for p in preds:
                 f.write('{}\n'.format(p))
 
-    def run_train(self, data, work_dir):
-        # your code here
-        pass
+    def run_train(self, dataset, work_dir):
+        self.model.train_model(dataset, batch_size=32, learning_rate=0.001, num_epochs=10, device=DEVICE)
 
     def run_pred(self, data):
         # your code here
