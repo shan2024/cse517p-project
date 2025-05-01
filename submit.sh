@@ -7,6 +7,7 @@ mkdir -p submit
 
 # submit team.txt
 printf "Amelia Payne, amelia28\n" > submit/team.txt
+printf "Ashwini Kumar Singh, ashwini1\n" > submit/team.txt
 
 # train model
 python3 src/myprogram.py train --work_dir work
