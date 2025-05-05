@@ -3,6 +3,8 @@ RUN mkdir /job
 WORKDIR /job
 VOLUME ["/job/data", "/job/src", "/job/work", "/job/output"]
 
+RUN apt update && apt install -y build-essential vim
+
 RUN pip install transformers triton
 
 COPY src /job/src
