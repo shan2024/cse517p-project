@@ -3,7 +3,8 @@
     "name": "CSE517P Project Dev Container",
     // Dockerfile to build the container
     "build": {
-        "dockerfile": "../Dockerfile"
+        "dockerfile": "../Dockerfile",
+        "target": "dev"
     },
     // Features to include in the dev container
     "features": {},
