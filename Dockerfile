@@ -3,5 +3,9 @@ RUN mkdir /job
 WORKDIR /job
 VOLUME ["/job/data", "/job/src", "/job/work", "/job/output"]
 
+RUN pip install transformers triton
+
+COPY src /job/src
+
 # You should install any dependencies you need here.
 # RUN pip install tqdm
