@@ -1,6 +1,10 @@
 import os
+import re
+import ast
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
 
-from utils.normalize import normalize
+#from utils.normalize import normalize
 from utils.constants import MAX_NGRAM_SIZE, MAX_UNIGRAM_FALLBACK_SIZE, MAX_TOP_K
 from collections import defaultdict, Counter
 import pickle
@@ -18,10 +22,91 @@ class NGramModel:
         # Top unigrams will help in identifying the top if we don't find next available characters.
         self.top_unigrams = []
 
+    @staticmethod
+    def normalize_value(text):
+        """
+        Normalizes a given text by removing unwanted characters, splitting into words,
+        and preserving all Unicode characters (including non-Latin).
+        """
+        # Remove leading/trailing spaces
+        text = text.strip()
+
+        # Remove escaped newlines (\\n) completely
+        text = text.replace('\\n', '')
+
+        # Remove actual newlines (\n) completely
+        text = text.replace('\n', '')
+
+        # Use a regex pattern to keep only letters (including Unicode letters) and spaces
+        text = re.sub(r'[^A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u4e00-\u9fff\uac00-\ud7af\s]+', '', text)
+
+        # Tokenize the text into words using RegexpTokenizer (no need for punkt)
+        tokenizer = RegexpTokenizer(r'\w+')
+        words = tokenizer.tokenize(text)
+
+        # Remove stopwords using NLTK's stopwords list TODO: more languages
+        stop_words = set(stopwords.words('english'))
+        words = [word for word in words if word.lower() not in stop_words]
+
+        return words
+
+    @staticmethod
+    def normalize_conversations(conversation):
+        """
+        Normalize a list of conversation entries. Each entry's value is tokenized into words.
+        """
+        normalized = []
+        if isinstance(conversation, str):
+            try:
+                conversation = ast.literal_eval(conversation)
+            except ValueError as e:
+                print("Error parsing conversation string:", e)
+                return []
+
+        for entry in conversation:
+            if isinstance(entry, dict):
+                text = entry.get("value", "")
+            elif isinstance(entry, str):
+                text = entry
+            else:
+                print("Error parsing conversation entry")
+                return
+            normalized_words = NGramModel.normalize_value(text)
+            normalized.append({"normalized": normalized_words})
+        return normalized
+
     @classmethod
-    def load_training_data(cls):
-        with open("data/en.txt", "r", encoding="utf-8") as f:
-            return f.read()
+    def load_training_data(cls, train_dataset=None):
+        """
+        Normalizes and loads training data, splits each conversation into individual words.
+        If no dataset is provided, it defaults to loading from the 'data/en.txt' file.
+        """
+        if train_dataset is None:
+            # with open("data/en.txt", "r", encoding="utf-8") as f:
+            #     train_dataset = {"conversations": f.readlines()}
+            return []
+        
+        try:
+            train_conversations = train_dataset['conversations']
+        except Exception as e:
+            print(f"Error parsing conversations field: {e}")
+            raise
+        return cls.normalize_conversations(train_conversations)
+
+    @classmethod
+    def load_dev_data(cls, dev_dataset=None):
+        """
+        Normalizes and loads dev data, splits each conversation into individual words.
+        """
+        if dev_dataset is None:
+            return []
+        
+        try:
+            dev_conversations = dev_dataset['conversations']
+        except Exception as e:
+            print(f"Error parsing conversations field: {e}")
+            raise
+        return cls.normalize_conversations(dev_conversations)
 
     @classmethod
     def load_test_data(cls, fname):
@@ -54,10 +139,27 @@ class NGramModel:
     '''
     def run_train(self, raw_data, work_dir):
 
+        # Ensure raw_data is a string before normalization
+        data = ''
+        if isinstance(raw_data, list):
+            for i in range(3): # only 3 conversations
+                normalized_conversation = raw_data[i]['normalized']
+                joined_conversation = ' '.join(normalized_conversation) # TODO: KEEP THE SPACE???
+                data += ' ' + joined_conversation
+            # train on all training data
+            # for conversation in raw_data:
+            #     normalized_conversation = conversation['normalized']
+            #     joined_conversation = ' '.join(normalized_conversation)
+            #     data += ' ' + joined_conversation
+        
+        # see normalized data
+        #print(data[:200]) 
+
         # cleaning the raw data by normalizing it.
         # Basic normalization only
         # TODO: Do de-tokenization of the data - the data set always show ' ' after ' character.
-        data =  normalize(raw_data)
+        # DATA IS ALREADY NORMALIZED, keeping in case we need to compare training on data/en.txt
+        #data =  normalize(raw_data)
 
         # Build the n-gram model upto max_grams - n
         # n = 1, 2... max_grams
@@ -87,23 +189,29 @@ class NGramModel:
         # Identify top unigrams - ignores frequency
         all_chars = Counter(data)
         self.top_unigrams = [char for char, _ in all_chars.most_common(MAX_UNIGRAM_FALLBACK_SIZE)]
+        #print("Top unigrams: ", self.top_unigrams)
 
     def run_pred(self, data):
         # your code here
         preds = []
+            
         for context in data:
             preds.append(self.predict_next_chars(context))
+            #print("Context: ", context)
+            #print("Predicted: ", preds[-1])
+        
         return preds
 
     def predict_next_chars(self, context, top_k=MAX_TOP_K):
         candidates = []
         seen = set()
-        context = normalize(context)
+        context = NGramModel.normalize_value(context)
 
         # Iterate from the max_grams to lower ngrams if context not found n ... 3, 2, 1
         for n in range(self.max_grams, 0, -1):
             # Returns the last (n-1) characters of the context; '' for unigram.
-            ctx = context[-(n - 1):] if n > 1 else ''
+            ctx = ' '.join(context[-(n - 1):]) if n > 1 else ''  # Context is a list
+            # ctx = context[-(n - 1):] if n > 1 else ''
             model = self.models.get(n, {})
             dist = model.get(ctx, {})
             sorted_chars = sorted(dist.items(), key=lambda x: x[1], reverse=True)
