@@ -35,17 +35,14 @@ class MyModel:
         return normalized_train_data
 
     @classmethod
-    def load_test_data(cls, fname):
+    def load_dev_data(cls, dev_dataset):
         """
-        Loads and normalizes test data from the given file, splits by words.
+        Normalizes and loads dev data, splits each conversation into individual words.
         """
-        data = []
-        with open(fname) as f:
-            for line in f:
-                inp = line[:-1]  # remove the last character (newline)
-                data.append(inp)
-        # Normalize test data if needed
-        return data
+        # Parse the conversation string into a list of dictionaries
+        dev_conversations = ast.literal_eval(dev_dataset['conversations'])
+        normalized_dev_data = cls.normalize_conversations(dev_conversations)
+        return normalized_dev_data
 
     @classmethod
     def write_pred(cls, preds, fname):
@@ -148,7 +145,7 @@ if __name__ == '__main__':
     print("Normalizing training data...")
     normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
     print("Normalizing dev data...")
-    normalized_dev_data = MyModel.load_training_data(dev_dataset)  # Normalize dev data
+    normalized_dev_data = MyModel.load_dev_data(dev_dataset)  # Normalize dev data
 
     if args.mode == 'train':
         if not os.path.isdir(args.work_dir):
@@ -157,14 +154,14 @@ if __name__ == '__main__':
         print('Instantiating model')
         model = MyModel()
         print('Training')
-        model.run_train(normalized_train_data, args.work_dir)  # Train with normalized data
+        model.run_train(normalized_train_data, args.work_dir)  # Train with normalized train data
         print('Saving model')
         model.save(args.work_dir)
     elif args.mode == 'test':
         print('Loading model')
         model = MyModel.load(args.work_dir)
         print('Loading test data from {}'.format(args.test_data))
-        test_data = model.load_test_data(args.test_data)
+        test_data = model.load_dev_data(normalized_dev_data, args.test_data)  # Test with normalized dev data
         print('Making predictions')
         pred = model.run_pred(test_data)
         print('Writing predictions to {}'.format(args.test_output))
