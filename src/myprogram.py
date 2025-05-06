@@ -8,6 +8,15 @@ import re
 import unicodedata
 from langdetect import detect
 import ast
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
+
+# Ensure necessary NLTK data files are downloaded
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 class MyModel:
     """
@@ -17,7 +26,7 @@ class MyModel:
     @classmethod
     def load_training_data(cls, train_dataset):
         """
-        Normalizes and loads training data.
+        Normalizes and loads training data, splits each conversation into individual words.
         """
         # Parse the conversation string into a list of dictionaries
         train_conversations = ast.literal_eval(train_dataset['conversations'])
@@ -27,7 +36,7 @@ class MyModel:
     @classmethod
     def load_test_data(cls, fname):
         """
-        Loads and normalizes test data from the given file.
+        Loads and normalizes test data from the given file, splits by words.
         """
         data = []
         with open(fname) as f:
@@ -74,37 +83,37 @@ class MyModel:
     @staticmethod
     def normalize_value(text):
         """
-        Normalizes a given text by removing unwanted characters and handling accents.
+        Normalizes a given text by removing unwanted characters, splitting into words, and converting to ASCII.
         """
         # Remove leading/trailing spaces
         text = text.strip()
 
-        # Remove special characters and unwanted punctuation
-        text = re.sub(r'[^A-Za-z0-9áéíóúàèìòùäëïöüâêîôûãõÇçÁÉÍÓÚ]+', ' ', text)
+        # Remove special characters and unwanted punctuation, leaving spaces
+        text = re.sub(r'[^A-Za-z0-9áéíóúàèìòùäëïöüâêîôûãõÇçÁÉÍÓÚ\s]+', '', text)
 
         # Normalize text: converting unicode characters (accents) to standard characters
         text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
 
-        # Optionally, you can use a language detection library to handle language-specific normalizations
-        try:
-            lang = detect(text)
-        except:
-            lang = "unknown"
+        # Tokenize into words using NLTK's word_tokenize
+        words = word_tokenize(text)
 
-        return text, lang
+        # Remove stopwords using NLTK's stopwords list
+        stop_words = set(stopwords.words('english'))
+        words = [word for word in words if word.lower() not in stop_words]
+
+        return words
 
     @staticmethod
     def normalize_conversations(conversation):
         """
-        Normalize a list of conversation entries.
+        Normalize a list of conversation entries. Each entry's value is tokenized into words.
         """
         normalized = []
         for entry in conversation:
             text = entry["value"]
-            normalized_text, lang = MyModel.normalize_value(text)
+            normalized_words = MyModel.normalize_value(text)
             normalized.append({
-                "normalized": normalized_text,
-                "language": lang
+                "normalized": normalized_words  # List of words
             })
         return normalized
 
@@ -120,7 +129,7 @@ if __name__ == '__main__':
     random.seed(0)
 
     # Load the dataset
-    dataset = load_dataset("csv", data_files="src/output/mldd_dataset.csv")
+    dataset = load_dataset("csv", data_files="output/mldd_dataset.csv")
 
     # Split the dataset into train and validation sets (90% train, 10% validation)
     train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
