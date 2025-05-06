@@ -120,7 +120,7 @@ if __name__ == '__main__':
     random.seed(0)
 
     # Load the dataset
-    dataset = load_dataset("csv", data_files="src/data/mldd_dataset.csv")
+    dataset = load_dataset("csv", data_files="src/output/mldd_dataset.csv")
 
     # Split the dataset into train and validation sets (90% train, 10% validation)
     train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
