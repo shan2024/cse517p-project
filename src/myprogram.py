@@ -2,7 +2,9 @@
 import os
 import string
 import random
+import pickle
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from collections import defaultdict, Counter
 
 
 class MyModel:
@@ -10,11 +12,17 @@ class MyModel:
     This is a starter model to get you started. Feel free to modify this file.
     """
 
+    def __init__(self, max_n=5):
+        self.max_n = max_n
+        self.models = {}
+        self.top_unigrams = []
+
     @classmethod
     def load_training_data(cls):
         # your code here
         # this particular model doesn't train
-        return []
+        with open("src/train.txt", "r", encoding="utf-8") as f:
+            return f.read()
 
     @classmethod
     def load_test_data(cls, fname):
@@ -34,31 +42,70 @@ class MyModel:
 
     def run_train(self, data, work_dir):
         # your code here
-        pass
+        for n in range(1, self.max_n + 1):
+            self.models[n] = defaultdict(Counter)
+            for i in range(len(data) - n):
+                context = data[i:i + n - 1] if n > 1 else ''
+                next_char = data[i + n - 1]
+                self.models[n][context][next_char] += 1
+
+        # Compute top unigrams as fallback
+        all_chars = Counter(data)
+        self.top_unigrams = [c for c, _ in all_chars.most_common(10)]
 
     def run_pred(self, data):
         # your code here
         preds = []
-        all_chars = string.ascii_letters
-        for inp in data:
-            # this model just predicts a random character each time
-            top_guesses = [random.choice(all_chars) for _ in range(3)]
-            preds.append(''.join(top_guesses))
+        for context in data:
+            preds.append(self.predict_next_chars(context))
         return preds
+
+    def predict_next_chars(self, context, top_k=3):
+        candidates = []
+        seen = set()
+        context = context or ''
+
+        for n in range(self.max_n, 0, -1):
+            ctx = context[-(n - 1):] if n > 1 else ''
+            model = self.models.get(n, {})
+            dist = model.get(ctx, {})
+            sorted_chars = sorted(dist.items(), key=lambda x: x[1], reverse=True)
+            for char, _ in sorted_chars:
+                if char not in seen:
+                    candidates.append(char)
+                    seen.add(char)
+                if len(candidates) >= top_k:
+                    return ''.join(candidates[:top_k])
+
+        # Fallback to top unigrams
+        for char in self.top_unigrams:
+            if char not in seen:
+                candidates.append(char)
+            if len(candidates) >= top_k:
+                break
+
+        return ''.join(candidates[:top_k])
 
     def save(self, work_dir):
         # your code here
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
-            f.write('dummy save')
+        with open(os.path.join(work_dir, 'model.pkl'), 'wb') as f:
+            pickle.dump({
+                "max_n": self.max_n,
+                "models": self.models,
+                "top_unigrams": self.top_unigrams
+            }, f)
 
     @classmethod
     def load(cls, work_dir):
         # your code here
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint')) as f:
-            dummy_save = f.read()
-        return MyModel()
+        with open(os.path.join(work_dir, 'model.pkl'), 'rb') as f:
+            obj = pickle.load(f)
+        model = cls(max_n=obj['max_n'])
+        model.models = obj['models']
+        model.top_unigrams = obj['top_unigrams']
+        return model
 
 
 if __name__ == '__main__':
