@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datasets import load_dataset
@@ -19,7 +18,8 @@ import torch.nn as nn
 # Ensure necessary NLTK data files are downloaded
 nltk.download('punkt')
 nltk.download('stopwords')
-nltk.download('wordnet')
+nltk.download('wordnet')from ngram_model import NGramModel
+
 
 class MyModel(nn.Module):
     """
@@ -178,18 +178,18 @@ if __name__ == '__main__':
             print('Making working directory {}'.format(args.work_dir))
             os.makedirs(args.work_dir)
         print('Instantiating model')
-        model = MyModel()
+        model = NGramModel()
         print('Normalizing training data...')
-        normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
+        normalized_train_data = NGramModel.load_training_data(train_dataset)  # Normalize training data
         print('Training')
         model.run_train(normalized_train_data, args.work_dir)  # Train with normalized train data
         print('Saving model')
         model.save(args.work_dir)
     elif args.mode == 'test':
         print('Loading model')
-        model = MyModel.load(args.work_dir)
+        model = NGramModel.load(args.work_dir)
         print('Normalizing test data...')
-        normalized_dev_data = MyModel.load_dev_data(dev_dataset)  # Normalize dev data
+        normalized_dev_data = NGramModel.load_dev_data(dev_dataset)  # Normalize dev data
         print('Making predictions')
         pred = model.run_pred(normalized_dev_data)
         print('Writing predictions to {}'.format(args.test_output))
