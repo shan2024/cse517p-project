@@ -3,7 +3,22 @@ import os
 import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from datasets import load_dataset
+import re
+import unicodedata
+from langdetect import detect
+import ast
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
+import subprocess
+import torch
 
+# Ensure necessary NLTK data files are downloaded
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 class MyModel:
     """
@@ -11,20 +26,24 @@ class MyModel:
     """
 
     @classmethod
-    def load_training_data(cls):
-        # your code here
-        # this particular model doesn't train
-        return []
+    def load_training_data(cls, train_dataset):
+        """
+        Normalizes and loads training data, splits each conversation into individual words.
+        """
+        # Parse the conversation string into a list of dictionaries
+        train_conversations = ast.literal_eval(train_dataset['conversations'])
+        normalized_train_data = cls.normalize_conversations(train_conversations)
+        return normalized_train_data
 
     @classmethod
-    def load_test_data(cls, fname):
-        # your code here
-        data = []
-        with open(fname) as f:
-            for line in f:
-                inp = line[:-1]  # the last character is a newline
-                data.append(inp)
-        return data
+    def load_dev_data(cls, dev_dataset):
+        """
+        Normalizes and loads dev data, splits each conversation into individual words.
+        """
+        # Parse the conversation string into a list of dictionaries
+        dev_conversations = ast.literal_eval(dev_dataset['conversations'])
+        normalized_dev_data = cls.normalize_conversations(dev_conversations)
+        return normalized_dev_data
 
     @classmethod
     def write_pred(cls, preds, fname):
@@ -47,18 +66,54 @@ class MyModel:
         return preds
 
     def save(self, work_dir):
-        # your code here
-        # this particular model has nothing to save, but for demonstration purposes we will save a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
-            f.write('dummy save')
+        model_path = os.path.join(work_dir, 'model.pt')
+        torch.save(self.state_dict(), model_path)
+        print(f"Model saved to {model_path}")
 
     @classmethod
     def load(cls, work_dir):
-        # your code here
-        # this particular model has nothing to load, but for demonstration purposes we will load a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint')) as f:
-            dummy_save = f.read()
-        return MyModel()
+        model_path = os.path.join(work_dir, 'model.pt')
+        model = cls()  # Create a fresh instance
+        model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        model.eval()  # Set to evaluation mode if needed
+        print(f"Model loaded from {model_path}")
+        return model
+
+    @staticmethod
+    def normalize_value(text):
+        """
+        Normalizes a given text by removing unwanted characters, splitting into words,
+        and preserving all Unicode characters (including non-Latin).
+        """
+        # Remove leading/trailing spaces
+        text = text.strip()
+
+        # Remove special characters, punctuation, and numbers, keeping only letters and spaces
+        # This allows all Unicode letters and removes numbers, punctuation, and special characters.
+        text = re.sub(r'[^\p{L}\s]+', '', text)
+
+        # Tokenize into words using NLTK's word_tokenize
+        words = word_tokenize(text)
+
+        # Remove stopwords using NLTK's stopwords list
+        stop_words = set(stopwords.words('english'))
+        words = [word for word in words if word.lower() not in stop_words]
+
+        return words
+
+    @staticmethod
+    def normalize_conversations(conversation):
+        """
+        Normalize a list of conversation entries. Each entry's value is tokenized into words.
+        """
+        normalized = []
+        for entry in conversation:
+            text = entry["value"]
+            normalized_words = MyModel.normalize_value(text)
+            normalized.append({
+                "normalized": normalized_words  # List of words
+            })
+        return normalized
 
 
 if __name__ == '__main__':
@@ -71,23 +126,43 @@ if __name__ == '__main__':
 
     random.seed(0)
 
+    # Check if the mldd_dataset.csv file exists
+    dataset_file = 'output/mldd_dataset.csv'
+    if not os.path.isfile(dataset_file):
+        print(f"{dataset_file} not found. Running the necessary script to generate it.")
+        # Run the script from src/util/combine_dataset_files.py to combine the dataset splits
+        script_path = 'src/util/combine_dataset_files.py'
+        subprocess.run(['python', script_path], check=True)
+    else:
+        print(f"{dataset_file} found. Proceeding with loading the dataset.")
+    
+    # Load the dataset
+    dataset = load_dataset("csv", data_files="output/mldd_dataset.csv")
+
+    # Split the dataset into train and validation sets (90% train, 10% validation)
+    train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
+
+    # Normalize the train and dev datasets
+    print("Normalizing training data...")
+    normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
+    print("Normalizing dev data...")
+    normalized_dev_data = MyModel.load_dev_data(dev_dataset)  # Normalize dev data
+
     if args.mode == 'train':
         if not os.path.isdir(args.work_dir):
             print('Making working directory {}'.format(args.work_dir))
             os.makedirs(args.work_dir)
-        print('Instatiating model')
+        print('Instantiating model')
         model = MyModel()
-        print('Loading training data')
-        train_data = MyModel.load_training_data()
         print('Training')
-        model.run_train(train_data, args.work_dir)
+        model.run_train(normalized_train_data, args.work_dir)  # Train with normalized train data
         print('Saving model')
         model.save(args.work_dir)
     elif args.mode == 'test':
         print('Loading model')
         model = MyModel.load(args.work_dir)
         print('Loading test data from {}'.format(args.test_data))
-        test_data = MyModel.load_test_data(args.test_data)
+        test_data = model.load_dev_data(normalized_dev_data, args.test_data)  # Test with normalized dev data
         print('Making predictions')
         pred = model.run_pred(test_data)
         print('Writing predictions to {}'.format(args.test_output))
