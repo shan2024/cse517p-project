@@ -12,6 +12,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
+import subprocess
 
 # Ensure necessary NLTK data files are downloaded
 nltk.download('punkt')
@@ -83,16 +84,15 @@ class MyModel:
     @staticmethod
     def normalize_value(text):
         """
-        Normalizes a given text by removing unwanted characters, splitting into words, and converting to ASCII.
+        Normalizes a given text by removing unwanted characters, splitting into words,
+        and preserving all Unicode characters (including non-Latin).
         """
         # Remove leading/trailing spaces
         text = text.strip()
 
-        # Remove special characters and unwanted punctuation, leaving spaces
-        text = re.sub(r'[^A-Za-z0-9áéíóúàèìòùäëïöüâêîôûãõÇçÁÉÍÓÚ\s]+', '', text)
-
-        # Normalize text: converting unicode characters (accents) to standard characters
-        text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
+        # Remove special characters, punctuation, and numbers, keeping only letters and spaces
+        # This allows all Unicode letters and removes numbers, punctuation, and special characters.
+        text = re.sub(r'[^\p{L}\s]+', '', text)
 
         # Tokenize into words using NLTK's word_tokenize
         words = word_tokenize(text)
@@ -128,11 +128,27 @@ if __name__ == '__main__':
 
     random.seed(0)
 
+    # Check if the mldd_dataset.csv file exists
+    dataset_file = 'output/mldd_dataset.csv'
+    if not os.path.isfile(dataset_file):
+        print(f"{dataset_file} not found. Running the necessary script to generate it.")
+        # Run the script from src/util/combine_dataset_files.py to combine the dataset splits
+        script_path = 'src/util/combine_dataset_files.py'
+        subprocess.run(['python', script_path], check=True)
+    else:
+        print(f"{dataset_file} found. Proceeding with loading the dataset.")
+    
     # Load the dataset
     dataset = load_dataset("csv", data_files="output/mldd_dataset.csv")
 
     # Split the dataset into train and validation sets (90% train, 10% validation)
     train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
+
+    # Normalize the train and dev datasets
+    print("Normalizing training data...")
+    normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
+    print("Normalizing dev data...")
+    normalized_dev_data = MyModel.load_training_data(dev_dataset)  # Normalize dev data
 
     if args.mode == 'train':
         if not os.path.isdir(args.work_dir):
@@ -140,10 +156,8 @@ if __name__ == '__main__':
             os.makedirs(args.work_dir)
         print('Instantiating model')
         model = MyModel()
-        print('Loading training data')
-        train_data = model.load_training_data(train_dataset)
         print('Training')
-        model.run_train(train_data, args.work_dir)
+        model.run_train(normalized_train_data, args.work_dir)  # Train with normalized data
         print('Saving model')
         model.save(args.work_dir)
     elif args.mode == 'test':
