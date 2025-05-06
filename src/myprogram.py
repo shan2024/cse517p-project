@@ -13,6 +13,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 import subprocess
+import torch
 
 # Ensure necessary NLTK data files are downloaded
 nltk.download('punkt')
@@ -65,18 +66,18 @@ class MyModel:
         return preds
 
     def save(self, work_dir):
-        # your code here
-        # this particular model has nothing to save, but for demonstration purposes we will save a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
-            f.write('dummy save')
+        model_path = os.path.join(work_dir, 'model.pt')
+        torch.save(self.state_dict(), model_path)
+        print(f"Model saved to {model_path}")
 
     @classmethod
     def load(cls, work_dir):
-        # your code here
-        # this particular model has nothing to load, but for demonstration purposes we will load a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint')) as f:
-            dummy_save = f.read()
-        return MyModel()
+        model_path = os.path.join(work_dir, 'model.pt')
+        model = cls()  # Create a fresh instance
+        model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        model.eval()  # Set to evaluation mode if needed
+        print(f"Model loaded from {model_path}")
+        return model
 
     @staticmethod
     def normalize_value(text):
