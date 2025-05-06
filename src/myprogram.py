@@ -14,13 +14,14 @@ from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 import subprocess
 import torch
+import torch.nn as nn
 
 # Ensure necessary NLTK data files are downloaded
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-class MyModel:
+class MyModel(nn.Module):
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
@@ -30,8 +31,11 @@ class MyModel:
         """
         Normalizes and loads training data, splits each conversation into individual words.
         """
-        # Parse the conversation string into a list of dictionaries
-        train_conversations = ast.literal_eval(train_dataset['conversations'])
+        try:
+            train_conversations = train_dataset['conversations']
+        except Exception as e:
+            print(f"Error parsing conversations field: {e}")
+            raise
         normalized_train_data = cls.normalize_conversations(train_conversations)
         return normalized_train_data
 
@@ -40,8 +44,11 @@ class MyModel:
         """
         Normalizes and loads dev data, splits each conversation into individual words.
         """
-        # Parse the conversation string into a list of dictionaries
-        dev_conversations = ast.literal_eval(dev_dataset['conversations'])
+        try:
+            dev_conversations = dev_dataset['conversations']
+        except Exception as e:
+            print(f"Error parsing conversations field: {e}")
+            raise
         normalized_dev_data = cls.normalize_conversations(dev_conversations)
         return normalized_dev_data
 
@@ -66,8 +73,11 @@ class MyModel:
         return preds
 
     def save(self, work_dir):
-        model_path = os.path.join(work_dir, 'model.pt')
-        torch.save(self.state_dict(), model_path)
+        """
+        Save the model's state dict to the specified directory.
+        """
+        model_path = os.path.join(work_dir, 'model.pt')  # Save as a .pth file (PyTorch format)
+        torch.save(self.state_dict(), model_path)  # Save only the model's state_dict
         print(f"Model saved to {model_path}")
 
     @classmethod
@@ -88,14 +98,20 @@ class MyModel:
         # Remove leading/trailing spaces
         text = text.strip()
 
-        # Remove special characters, punctuation, and numbers, keeping only letters and spaces
-        # This allows all Unicode letters and removes numbers, punctuation, and special characters.
-        text = re.sub(r'[^\p{L}\s]+', '', text)
+        # Remove escaped newlines (\\n) completely
+        text = text.replace('\\n', '')
 
-        # Tokenize into words using NLTK's word_tokenize
-        words = word_tokenize(text)
+        # Remove actual newlines (\n) completely
+        text = text.replace('\n', '')
 
-        # Remove stopwords using NLTK's stopwords list
+        # Use a regex pattern to keep only letters (including Unicode letters) and spaces
+        text = re.sub(r'[^A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u4e00-\u9fff\uac00-\ud7af\s]+', '', text)
+
+        # Tokenize the text into words using RegexpTokenizer (no need for punkt)
+        tokenizer = RegexpTokenizer(r'\w+')
+        words = tokenizer.tokenize(text)
+
+        # Remove stopwords using NLTK's stopwords list TODO: more languages
         stop_words = set(stopwords.words('english'))
         words = [word for word in words if word.lower() not in stop_words]
 
@@ -107,8 +123,22 @@ class MyModel:
         Normalize a list of conversation entries. Each entry's value is tokenized into words.
         """
         normalized = []
+        # Ensure that conversation is a list of dictionaries, if not, parse it
+        if isinstance(conversation, str):
+            try:
+                conversation = ast.literal_eval(conversation)  # Parse the string into a list of dictionaries
+            except ValueError as e:
+                print("Error parsing conversation string:", e)
+                return []
+
         for entry in conversation:
-            text = entry["value"]
+            if isinstance(entry, dict):  # If entry is a dictionary
+                text = entry.get("value", "")  # Extract the 'value' field
+            elif isinstance(entry, str):  # If entry is a string
+                text = entry  # Use the string directly
+            else:
+                print("Error parsing conversation entry")
+                return
             normalized_words = MyModel.normalize_value(text)
             normalized.append({
                 "normalized": normalized_words  # List of words
@@ -142,11 +172,6 @@ if __name__ == '__main__':
     # Split the dataset into train and validation sets (90% train, 10% validation)
     train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
 
-    # Normalize the train and dev datasets
-    print("Normalizing training data...")
-    normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
-    print("Normalizing dev data...")
-    normalized_dev_data = MyModel.load_dev_data(dev_dataset)  # Normalize dev data
 
     if args.mode == 'train':
         if not os.path.isdir(args.work_dir):
@@ -154,6 +179,8 @@ if __name__ == '__main__':
             os.makedirs(args.work_dir)
         print('Instantiating model')
         model = MyModel()
+        print('Normalizing training data...')
+        normalized_train_data = MyModel.load_training_data(train_dataset)  # Normalize training data
         print('Training')
         model.run_train(normalized_train_data, args.work_dir)  # Train with normalized train data
         print('Saving model')
@@ -161,12 +188,12 @@ if __name__ == '__main__':
     elif args.mode == 'test':
         print('Loading model')
         model = MyModel.load(args.work_dir)
-        print('Loading test data from {}'.format(args.test_data))
-        test_data = model.load_dev_data(normalized_dev_data, args.test_data)  # Test with normalized dev data
+        print('Normalizing test data...')
+        normalized_dev_data = MyModel.load_dev_data(dev_dataset)  # Normalize dev data
         print('Making predictions')
-        pred = model.run_pred(test_data)
+        pred = model.run_pred(normalized_dev_data)
         print('Writing predictions to {}'.format(args.test_output))
-        assert len(pred) == len(test_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
+        assert len(pred) == len(normalized_dev_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
         model.write_pred(pred, args.test_output)
     else:
         raise NotImplementedError('Unknown mode {}'.format(args.mode))
