@@ -4,7 +4,10 @@ import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datasets import load_dataset
-
+import re
+import unicodedata
+from langdetect import detect
+import ast
 
 class MyModel:
     """
@@ -12,19 +15,26 @@ class MyModel:
     """
 
     @classmethod
-    def load_training_data(cls):
-        # your code here
-        # this particular model doesn't train
-        return []
+    def load_training_data(cls, train_dataset):
+        """
+        Normalizes and loads training data.
+        """
+        # Parse the conversation string into a list of dictionaries
+        train_conversations = ast.literal_eval(train_dataset['conversations'])
+        normalized_train_data = cls.normalize_conversations(train_conversations)
+        return normalized_train_data
 
     @classmethod
     def load_test_data(cls, fname):
-        # your code here
+        """
+        Loads and normalizes test data from the given file.
+        """
         data = []
         with open(fname) as f:
             for line in f:
-                inp = line[:-1]  # the last character is a newline
+                inp = line[:-1]  # remove the last character (newline)
                 data.append(inp)
+        # Normalize test data if needed
         return data
 
     @classmethod
@@ -61,6 +71,43 @@ class MyModel:
             dummy_save = f.read()
         return MyModel()
 
+    @staticmethod
+    def normalize_value(text):
+        """
+        Normalizes a given text by removing unwanted characters and handling accents.
+        """
+        # Remove leading/trailing spaces
+        text = text.strip()
+
+        # Remove special characters and unwanted punctuation
+        text = re.sub(r'[^A-Za-z0-9áéíóúàèìòùäëïöüâêîôûãõÇçÁÉÍÓÚ]+', ' ', text)
+
+        # Normalize text: converting unicode characters (accents) to standard characters
+        text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
+
+        # Optionally, you can use a language detection library to handle language-specific normalizations
+        try:
+            lang = detect(text)
+        except:
+            lang = "unknown"
+
+        return text, lang
+
+    @staticmethod
+    def normalize_conversations(conversation):
+        """
+        Normalize a list of conversation entries.
+        """
+        normalized = []
+        for entry in conversation:
+            text = entry["value"]
+            normalized_text, lang = MyModel.normalize_value(text)
+            normalized.append({
+                "normalized": normalized_text,
+                "language": lang
+            })
+        return normalized
+
 
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -72,18 +119,20 @@ if __name__ == '__main__':
 
     random.seed(0)
 
-    # Load the entire CSV file
+    # Load the dataset
     dataset = load_dataset("csv", data_files="src/data/mldd_dataset.csv")
+
+    # Split the dataset into train and validation sets (90% train, 10% validation)
     train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
 
     if args.mode == 'train':
         if not os.path.isdir(args.work_dir):
             print('Making working directory {}'.format(args.work_dir))
             os.makedirs(args.work_dir)
-        print('Instatiating model')
+        print('Instantiating model')
         model = MyModel()
         print('Loading training data')
-        train_data = MyModel.load_training_data()
+        train_data = model.load_training_data(train_dataset)
         print('Training')
         model.run_train(train_data, args.work_dir)
         print('Saving model')
@@ -92,7 +141,7 @@ if __name__ == '__main__':
         print('Loading model')
         model = MyModel.load(args.work_dir)
         print('Loading test data from {}'.format(args.test_data))
-        test_data = MyModel.load_test_data(args.test_data)
+        test_data = model.load_test_data(args.test_data)
         print('Making predictions')
         pred = model.run_pred(test_data)
         print('Writing predictions to {}'.format(args.test_output))
