@@ -19,7 +19,7 @@ combined_dialogues = pd.concat([nasa_df['dialogue'], trek_df['dialogue']], ignor
 all_lines = combined_dialogues.dropna().astype(str).tolist()
 
 # Just used for controlling the size of the dataset used for traiing. May not use this later
-sample_fraction = .01  
+sample_fraction = 1
 total_lines = len(all_lines)
 sample_count = max(1, round(sample_fraction * total_lines))
 
