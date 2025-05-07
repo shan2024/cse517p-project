@@ -18,6 +18,7 @@ class PositionEncoding(nn.Module):
 class CharacterTransformer(nn.Module):
     def __init__(self, vocab_size, embedding_dim=128, num_heads=4, num_layers=2, ff_dim=512, dropout=0.1):
         super().__init__()
+        
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.pos_encoder = PositionEncoding(embedding_dim)
         encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout)
@@ -29,4 +30,5 @@ class CharacterTransformer(nn.Module):
         positioned = self.pos_encoder(embeddings)
         transposed = positioned.permute(1, 0, 2)
         encoded = self.transformer_encoder(transposed)
+        
         return self.output_layer(encoded[-1])

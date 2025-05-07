@@ -8,14 +8,18 @@ import os
 from character_transformer_model import CharacterTransformer
 from utils import build_vocab, CharDataset
 
+parent_dir = os.path.dirname(os.path.abspath("__file__"))
+data_dir = os.path.join(parent_dir, "../../data")
+test_dir = os.path.join(parent_dir, "../../test")
+
 # Load training data
-nasa_df = pd.read_csv("data/parsed_data/train_nasa.csv")
-trek_df = pd.read_csv("data/parsed_data/train_trek.csv")
+nasa_df = pd.read_csv(f"{data_dir}/parsed_data/train_nasa.csv")
+trek_df = pd.read_csv(f"{data_dir}/parsed_data/train_trek.csv")
 combined_dialogues = pd.concat([nasa_df['dialogue'], trek_df['dialogue']], ignore_index=True)
 all_lines = combined_dialogues.dropna().astype(str).tolist()
 
 # Just used for controlling the size of the dataset used for traiing. May not use this later
-sample_fraction = 0.1  # take 1% of the data
+sample_fraction = .01  
 total_lines = len(all_lines)
 sample_count = max(1, round(sample_fraction * total_lines))
 
@@ -33,7 +37,7 @@ vocab_size = len(char_to_index)
 context_length = 32
 
 # Saving vocab to JSON for later use
-vocab_path = os.path.join("src", "Transformer_Based", "char_to_index.json")
+vocab_path = os.path.join(parent_dir, "char_to_index.json")
 with open(vocab_path, "w", encoding="utf-8") as f:
     json.dump(char_to_index, f, ensure_ascii=False, indent=2)
 print("Vocabulary saved to char_to_index.json")
@@ -58,6 +62,8 @@ for epoch in range(3):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
+
+        
     print(f"Epoch {epoch+1}/3 - Avg Loss: {total_loss/len(data_loader):.4f}")
 
 # Saving model state 
