@@ -128,7 +128,7 @@ if __name__ == '__main__':
     dataset = load_dataset("csv", data_files="output/mldd_dataset.csv")
 
     # Split the dataset into train and validation sets (90% train, 10% validation)
-    train_dataset, dev_dataset = dataset["train"].train_test_split(test_size=0.1).values()
+    train_dataset, dev_dataset = dataset["train"].train_test_split(5=0.1).values()
     # print part of the train dataset
     print("Train dataset sample:")
 
@@ -158,8 +158,8 @@ if __name__ == '__main__':
         # print('Writing predictions to {}'.format(args.test_output))
         # assert len(pred) == len(normalized_dev_data), 'Expected {} predictions but got {}'.format(len(normalized_dev_data), len(pred))
         # model.write_pred(pred, args.test_output)
-
-
+        
+        
         # use with plain example/input.txt file
         # python src/myprogram.py test --work_dir work --test_data example/input.txt --test_output pred.txt
         print('Loading model')

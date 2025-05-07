@@ -3,6 +3,8 @@ import re
 import ast
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
+import unicodedata
+
 
 #from utils.normalize import normalize
 from utils.constants import MAX_NGRAM_SIZE, MAX_UNIGRAM_FALLBACK_SIZE, MAX_TOP_K
@@ -25,54 +27,51 @@ class NGramModel:
     @staticmethod
     def normalize_value(text):
         """
-        Normalizes a given text by removing unwanted characters, splitting into words,
-        and preserving all Unicode characters (including non-Latin).
+        Normalize a given text by cleaning, tokenizing, and removing stopwords.
         """
-        # Remove leading/trailing spaces
-        text = text.strip()
+        # Remove newline characters
+        text = text.strip().replace('\n', ' ')
 
-        # Remove escaped newlines (\\n) completely
-        text = text.replace('\\n', '')
+        # Normalize Unicode characters
+        text = unicodedata.normalize('NFKC', text)
 
-        # Remove actual newlines (\n) completely
-        text = text.replace('\n', '')
+        # Remove non-word characters
+        text = re.sub(r'[^\w\s]', '', text, flags=re.UNICODE)
 
-        # Use a regex pattern to keep only letters (including Unicode letters) and spaces
-        text = re.sub(r'[^A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u4e00-\u9fff\uac00-\ud7af\s]+', '', text)
+        # Tokenize into words
+        words = re.findall(r'\w+', text, flags=re.UNICODE)
 
-        # Tokenize the text into words using RegexpTokenizer (no need for punkt)
-        tokenizer = RegexpTokenizer(r'\w+')
-        words = tokenizer.tokenize(text)
-
-        # Remove stopwords using NLTK's stopwords list TODO: more languages
+        # Get english stopwords (TODO: more langs)
         stop_words = set(stopwords.words('english'))
-        words = [word for word in words if word.lower() not in stop_words]
 
-        return words
+        # Remove stopwords
+        filtered = [word for word in words if word.lower() not in stop_words]
+        return filtered
 
     @staticmethod
-    def normalize_conversations(conversation):
+    def normalize_conversations(conversation_str_list):
         """
-        Normalize a list of conversation entries. Each entry's value is tokenized into words.
+        Extract 'value' texts using regex and normalize them.
         """
         normalized = []
-        if isinstance(conversation, str):
-            try:
-                conversation = ast.literal_eval(conversation)
-            except ValueError as e:
-                print("Error parsing conversation string:", e)
-                return []
 
-        for entry in conversation:
-            if isinstance(entry, dict):
-                text = entry.get("value", "")
-            elif isinstance(entry, str):
-                text = entry
-            else:
-                print("Error parsing conversation entry")
-                return
-            normalized_words = NGramModel.normalize_value(text)
-            normalized.append({"normalized": normalized_words})
+        # Improved regex: handles escaped quotes inside the value
+        value_pattern = re.compile(r"'value'\s*:\s*'((?:[^'\\]|\\.)*)'", re.DOTALL)
+
+        if not isinstance(conversation_str_list, list):
+            print(f"Expected a list, but got: {type(conversation_str_list)}")
+            return normalized
+
+        for conversation_str in conversation_str_list:
+            matches = value_pattern.findall(conversation_str)
+            for text in matches:
+                # Unescape any escaped quotes
+                text = text.encode('utf-8').decode('unicode_escape')
+
+                normalized_words = NGramModel.normalize_value(text)
+                normalized.append({
+                    "normalized": normalized_words
+                })
         return normalized
 
     @classmethod
@@ -142,18 +141,21 @@ class NGramModel:
         # Ensure raw_data is a string before normalization
         data = ''
         if isinstance(raw_data, list):
-            for i in range(3): # only 3 conversations
-                normalized_conversation = raw_data[i]['normalized']
-                joined_conversation = ' '.join(normalized_conversation) # TODO: KEEP THE SPACE???
+            i = 0
+            for conversation in raw_data:
+                normalized_conversation = conversation['normalized']
+                joined_conversation = ' '.join(normalized_conversation)
                 data += ' ' + joined_conversation
-            # train on all training data
-            # for conversation in raw_data:
-            #     normalized_conversation = conversation['normalized']
-            #     joined_conversation = ' '.join(normalized_conversation)
+                print("convo #" + str(i))
+                i += 1
+            # for i in range(3): # only 3 conversations
+            #     normalized_conversation = raw_data[i]['normalized']
+            #     joined_conversation = ' '.join(normalized_conversation) # TODO: KEEP THE SPACE???
             #     data += ' ' + joined_conversation
+            
         
         # see normalized data
-        #print(data[:200]) 
+        print(data[:200]) 
 
         # cleaning the raw data by normalizing it.
         # Basic normalization only
@@ -189,7 +191,7 @@ class NGramModel:
         # Identify top unigrams - ignores frequency
         all_chars = Counter(data)
         self.top_unigrams = [char for char, _ in all_chars.most_common(MAX_UNIGRAM_FALLBACK_SIZE)]
-        #print("Top unigrams: ", self.top_unigrams)
+        print("Top unigrams: ", self.top_unigrams)
 
     def run_pred(self, data):
         # your code here
@@ -197,8 +199,8 @@ class NGramModel:
             
         for context in data:
             preds.append(self.predict_next_chars(context))
-            #print("Context: ", context)
-            #print("Predicted: ", preds[-1])
+            print("Context: ", context)
+            print("Predicted: ", preds[-1])
         
         return preds
 
