@@ -38,26 +38,3 @@ def to_codepoint_tensor(data, max_line_size):
 
 
 
-def to_sample_and_expected_result(data):
-    """
-    Splits the provided input into sample, y_true pairs.
-    Each line is split at a random index between MIN_INPUT_SIZE and MAX_INPUT_SIZE
-    y_true represents the next chracter after the split. The remainder of the string is discarded
-
-    Output:
-
-    x: list of training samples
-    y_true: list of expected outputs
-    """
-    x = []
-    y_true = []
-
-    for i, line in enumerate(train_data):
-        #The max point we can split at is 1 minus the length of the string since we need one char for y_true
-        max_split_index = len(line)-1
-        split_index = random.randint(min(MIN_INPUT_SIZE, max_split_index), min(max_split_index, MAX_INPUT_SIZE))
-        x.append(line[0:split_index])
-        y_true.append(line[split_index])
-        
-
-    return x, y_true
