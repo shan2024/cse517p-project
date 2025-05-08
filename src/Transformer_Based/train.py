@@ -7,29 +7,25 @@ import os
 
 from character_transformer_model import CharacterTransformer
 from utils import build_vocab, CharDataset
+from helpers import DatasetFileLoader
 
 parent_dir = os.path.dirname(os.path.abspath("__file__"))
 data_dir = os.path.join(parent_dir, "../../data")
 test_dir = os.path.join(parent_dir, "../../test")
 
 # Load training data
-nasa_df = pd.read_csv(f"{data_dir}/parsed_data/train_nasa.csv")
-trek_df = pd.read_csv(f"{data_dir}/parsed_data/train_trek.csv")
-combined_dialogues = pd.concat([nasa_df['dialogue'], trek_df['dialogue']], ignore_index=True)
-all_lines = combined_dialogues.dropna().astype(str).tolist()
+
+data_loader = DatasetFileLoader()
+data_loader.load(f"{data_dir}/parsed_data")
+
+all_lines = data_loader.train_data
 
 # Just used for controlling the size of the dataset used for traiing. May not use this later
 sample_fraction = 1
 total_lines = len(all_lines)
-sample_count = max(1, round(sample_fraction * total_lines))
-
-random.seed(42)
-sampled_lines = random.sample(all_lines, sample_count)
 
 # Combine sampled lines into a single training string
-train_text = "\n".join(sampled_lines)
-
-print(f"Sampled {sample_count:,} lines "f"({sample_fraction:.3%}) out of {total_lines:,} total lines.")
+train_text = "\n".join(all_lines[0])
 
 # Build vocabulary 
 char_to_index, index_to_char = build_vocab(train_text)

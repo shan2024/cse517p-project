@@ -10,6 +10,8 @@ if __name__ == '__main__':
 
     y_true = load_true(args.test_dir)
 
+    print(y_true)
+
     pred = load_predicted(args.test_dir)
 
     accuracy = get_accuracy(y_true, pred)
