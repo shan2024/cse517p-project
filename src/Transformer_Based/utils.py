@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 
 def build_vocab(text):
     unique_chars = sorted(set(text))
+    # We should not predict \n or space
     unique_chars.remove('\n')
     char_to_index = {char: idx for idx, char in enumerate(unique_chars)}
     index_to_char = {idx: char for char, idx in char_to_index.items()}

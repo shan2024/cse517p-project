@@ -63,5 +63,4 @@ class TransformerModelWrapper:
 
                 res.append(pred)
 
-
             return res

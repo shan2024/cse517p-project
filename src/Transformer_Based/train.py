@@ -14,18 +14,17 @@ data_dir = os.path.join(parent_dir, "../../data")
 test_dir = os.path.join(parent_dir, "../../test")
 
 # Load training data
-
 data_loader = DatasetFileLoader()
-data_loader.load(f"{data_dir}/parsed_data")
+data_loader.load(f"{data_dir}/parsed_data", 1)
 
-all_lines = data_loader.train_data
+all_lines = data_loader.train_data[0][1:]
+
 
 # Just used for controlling the size of the dataset used for traiing. May not use this later
-sample_fraction = 1
 total_lines = len(all_lines)
 
 # Combine sampled lines into a single training string
-train_text = "\n".join(all_lines[0])
+train_text = "\n".join(all_lines)
 
 # Build vocabulary 
 char_to_index, index_to_char = build_vocab(train_text)
@@ -39,7 +38,7 @@ with open(vocab_path, "w", encoding="utf-8") as f:
 print("Vocabulary saved to char_to_index.json")
 
 dataset = CharDataset(train_text, char_to_index, context_length)
-data_loader = DataLoader(dataset, batch_size=64, shuffle=True)
+data_loader = DataLoader(dataset, batch_size=1024, shuffle=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CharacterTransformer(vocab_size).to(device)
@@ -48,7 +47,7 @@ loss_fn = torch.nn.CrossEntropyLoss()
 
 # lets train the model now
 model.train()
-for epoch in range(3):
+for epoch in range(12):
     total_loss = 0
     for x_batch, y_batch in data_loader:
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
@@ -59,8 +58,11 @@ for epoch in range(3):
         optimizer.step()
         total_loss += loss.item()
 
-        
-    print(f"Epoch {epoch+1}/3 - Avg Loss: {total_loss/len(data_loader):.4f}")
+    print(f"Epoch {epoch+1}/12 - Avg Loss: {total_loss/len(data_loader):.4f}")
+
+    # Save after each epoch in case training is intrupted
+    torch.save(model.state_dict(), "character_transformer.pt")
+    print("Model saved to character_transformer.pt")
 
 # Saving model state 
 torch.save(model.state_dict(), "character_transformer.pt")

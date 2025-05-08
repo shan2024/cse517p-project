@@ -27,7 +27,6 @@ if __name__ == '__main__':
 
     vocab_file = os.path.join(parent_dir, "src/Transformer_Based/char_to_index.json")
     model_file = os.path.join(parent_dir, "src/Transformer_Based/character_transformer.pt")
-    
 
     test_input = load_test_input(test_data_file)
 

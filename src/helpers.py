@@ -17,7 +17,7 @@ def write_pred(preds, fname):
 def get_accuracy(pred, gold):
     correct = 0
     for i, (p, g) in enumerate(zip(pred, gold)):
-        right = g in p
+        right = p in g
         correct += right
     return correct/len(gold)
 
