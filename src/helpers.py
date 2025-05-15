@@ -43,7 +43,7 @@ class DatasetFileLoader():
         self.dev_data = None
         self.train_data = None
     
-    def load(self, data_directory, fraction=1):
+    def load(self, data_directory, train_fraction=1, dev_fraction=1, test_fraction = 1):
 
         files = [f for f in os.listdir(data_directory) if os.path.isfile(os.path.join(data_directory, f))]
 
@@ -61,6 +61,6 @@ class DatasetFileLoader():
             if "train" in file_name:
                 self.train_data = pd.concat([self.train_data, data], ignore_index=True)
         
-        self.test_data  = self.test_data.sample(frac=fraction).reset_index(drop=True)
-        self.dev_data = self.dev_data.sample(frac=fraction).reset_index(drop=True)
-        self.train_data = self.train_data.sample(frac=fraction).reset_index(drop=True)
+        self.test_data  = self.test_data.sample(frac=test_fraction).reset_index(drop=True)
+        self.dev_data = self.dev_data.sample(frac=dev_fraction).reset_index(drop=True)
+        self.train_data = self.train_data.sample(frac=train_fraction).reset_index(drop=True)
