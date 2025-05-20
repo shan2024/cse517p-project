@@ -22,19 +22,24 @@ if __name__ == '__main__':
 
     random.seed(0)
 
-    test_data_file = args.test_data
-    output_file = args.test_output
-
     vocab_file = os.path.join(parent_dir, "src/Transformer_Based/char_to_index.json")
     model_file = os.path.join(parent_dir, "src/Transformer_Based/character_transformer.pt")
 
-    test_input = load_test_input(test_data_file)
-
     model = TransformerModelWrapper(vocab_file, model_file, device)
 
-    preds = model.predict(test_input)
+    if args.mode == "train":
+        model.train(.01)
 
-    write_pred(preds, output_file)
+    if args.mode == "test":
+
+        test_data_file = args.test_data
+        output_file = args.test_output
+
+        test_input = load_test_input(test_data_file)
+
+        preds = model.predict(test_input)
+
+        write_pred(preds, output_file)
     
 
     

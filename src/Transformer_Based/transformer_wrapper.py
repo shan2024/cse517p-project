@@ -3,6 +3,7 @@ import torch
 import json
 import torch.nn.functional as F
 from .character_transformer_model import CharacterTransformer
+from .train import train
 
 class TransformerModelWrapper:
     def __init__(self, vocab_file, model_file, device):
@@ -11,18 +12,24 @@ class TransformerModelWrapper:
         """
         #input size must be 32 characters. If it is more or less it is padded or truncated
         self.context_length = 32
+        self.vocab_file = vocab_file
+        self.model_file = model_file
+        self.device = device
 
+        
+
+    def load(self):
         # Load vocab which was saved before
-        with open(vocab_file, "r", encoding="utf-8") as f:
+        with open(self.vocab_file, "r", encoding="utf-8") as f:
             self.char_to_index = json.load(f)
         self.index_to_char = {i: ch for ch, i in self.char_to_index.items()}
         vocab_size = len(self.char_to_index)
         
         #load the model
-        self.model = CharacterTransformer(vocab_size).to(device)
-        self.model.load_state_dict(torch.load(model_file, map_location=device))
+        self.model = CharacterTransformer(vocab_size).to(self.device)
+        self.model.load_state_dict(torch.load(self.model_file, map_location=self.device))
         self.model.eval()
-        self.device = device
+
 
     def embed_string(self, input):
         input_ids = [self.char_to_index.get(c, self.char_to_index[' ']) for c in input][-self.context_length:]
@@ -64,3 +71,7 @@ class TransformerModelWrapper:
                 res.append(pred)
 
             return res
+    
+    def train(self, dataset_fraction=1):
+        train(dataset_fraction)
+
