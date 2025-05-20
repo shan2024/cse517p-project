@@ -17,7 +17,7 @@ test_dir = os.path.join(parent_dir, "../../test")
 
 # Load training data
 data_loader = DatasetFileLoader()
-data_loader.load(f"{data_dir}/parsed_data", 1, 1, 1)
+data_loader.load(f"{data_dir}/parsed_data", .05, .05, .05)
 
 train_data = data_loader.train_data[0][1:]
 dev_data = data_loader.dev_data[0][1:]
@@ -90,9 +90,7 @@ for epoch in range(num_epochs):
             loss = loss_fn(logits, y_batch)
             total_dev_loss += loss.item()
             
-
     avg_dev_loss = total_dev_loss / len(dev_loader)
-
 
     if avg_dev_loss > last_dev_loss:
         dev_increased_epoch_count+=1
