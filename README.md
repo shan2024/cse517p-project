@@ -19,7 +19,7 @@ python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --data_fra
 This command will run predict.py using the input file passed by `--test_data` and will write the output to `--test_output`.
 
 ```sh
-python ./src/predict.py --work_dir ./work --test_data ./test/input.txt --test_output ./work/pred.txt
+python ./src/predict.py --work_dir ./work --test_data ./test/input.txt --test_output ./test/pred.txt
 ```
 
 ### To Evaluate 

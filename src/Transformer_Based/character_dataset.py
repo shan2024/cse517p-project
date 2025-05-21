@@ -6,9 +6,9 @@ from data_parsing.helpers import DatasetFileLoader
 
 def build_vocab(text):
     unique_chars = sorted(set(text))
+    unique_chars.remove('\n')
     char_to_index = {char: idx for idx, char in enumerate(unique_chars)}
     index_to_char = {idx: char for char, idx in char_to_index.items()}
-    unique_chars.remove('\n')
     return char_to_index, index_to_char
 
 class CharDataset(Dataset):
@@ -41,6 +41,7 @@ class CharDatasetWrapper():
 
         # Build vocabulary 
         self._vocab, _ = build_vocab(train_text)
+        print(self._vocab)
 
         train_data = torch.tensor([self._vocab[char] for char in train_text if char in self._vocab])
         dev_data = torch.tensor([self._vocab[char] for char in dev_text if char in self._vocab])
