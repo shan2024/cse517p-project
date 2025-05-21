@@ -7,6 +7,8 @@ from .character_transformer_model import CharacterTransformer
 from .character_dataset import CharDatasetWrapper, build_vocab, CharDataset
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR
+import multiprocessing
+
 
 class TransformerModelWrapper:
     def __init__(self, device, work_directory):
@@ -82,10 +84,7 @@ class TransformerModelWrapper:
 
             return res
     
-    def train(self, data_directory, dataset_fraction: float=1.0):
-
-        # TODO: Pass in the hyperparameters
-        num_epochs = 5
+    def train(self, data_directory, dataset_fraction: float=1.0, num_epochs: int =3, lr: float=0.01, batch_size=64):
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
         
@@ -94,12 +93,12 @@ class TransformerModelWrapper:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
 
         # Prepare datasets
-        train_loader = DataLoader(dataset.train_dataset(), batch_size=64, shuffle=True, pin_memory=True, num_workers=22)
-        #dev_loader = DataLoader(dataset.dev_dataset(), batch_size=10000)
+        num_workers = min(4, multiprocessing.cpu_count())
 
+        train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
         self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
         # Training loop with dev loss evaluation
@@ -114,6 +113,7 @@ class TransformerModelWrapper:
                 logits = self.model(x_batch)
                 loss = self.loss_fn(logits, y_batch)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 total_train_loss += loss.item()
 

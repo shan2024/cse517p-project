@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import pandas as pd
 from character_transformer_model import CharacterTransformer
-from utils import build_vocab
+from character_dataset import build_vocab
 
 # Load training data from  CSVs
 df1 = pd.read_csv("../../data/parsed_data/train_nasa.csv")

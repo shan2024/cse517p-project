@@ -4,7 +4,6 @@ import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from Transformer_Based.transformer_wrapper import TransformerModelWrapper
-from Transformer_Based.character_transformer_model import CharacterTransformer
 import torch
 from helpers import load_test_input, write_pred
 

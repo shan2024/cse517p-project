@@ -41,7 +41,6 @@ class CharDatasetWrapper():
 
         # Build vocabulary 
         self._vocab, _ = build_vocab(train_text)
-        print(self._vocab)
 
         train_data = torch.tensor([self._vocab[char] for char in train_text if char in self._vocab])
         dev_data = torch.tensor([self._vocab[char] for char in dev_text if char in self._vocab])
@@ -60,6 +59,3 @@ class CharDatasetWrapper():
     
     def vocab_size(self):
         return len(self._vocab)
-
-    
-
