@@ -21,7 +21,7 @@ class CharacterTransformer(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.pos_encoder = PositionEncoding(embedding_dim)
-        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout, batch_first=True)
+        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers)
         self.output_layer = nn.Linear(embedding_dim, vocab_size)
 

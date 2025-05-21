@@ -84,7 +84,7 @@ class TransformerModelWrapper:
     def train(self, data_directory, dataset_fraction: float=1.0):
 
         # TODO: Pass in the hyperparameters
-        num_epochs = 1
+        num_epochs = 5
         warmup_steps = 500
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
@@ -94,11 +94,8 @@ class TransformerModelWrapper:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
 
         # Prepare datasets
-        train_loader = DataLoader(dataset.train_dataset(), batch_size=1024, shuffle=True, pin_memory=True, num_workers=22)
+        train_loader = DataLoader(dataset.train_dataset(), batch_size=64, shuffle=True, pin_memory=True, num_workers=22)
         #dev_loader = DataLoader(dataset.dev_dataset(), batch_size=10000)
-
-        print("Succeeded in loading the datasets and everything")
-
 
         self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
 
@@ -147,7 +144,7 @@ class TransformerModelWrapper:
 
             # last_dev_loss = avg_dev_loss
             
-            #print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {avg_train_loss:.4f} - Dev Loss: {avg_dev_loss:.4f}")
+            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
 
             # Save model after each epoch
             torch.save(self.model.state_dict(), f"{self.model_file_path}.{epoch}")
