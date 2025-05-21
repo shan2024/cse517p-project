@@ -14,4 +14,4 @@ if __name__ == '__main__':
 
     accuracy = get_accuracy(y_true, pred)
 
-    print(f"Accuracy is: {accuracy}")
+    print(f"Accuracy is: {accuracy:.2%}")

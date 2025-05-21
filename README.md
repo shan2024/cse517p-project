@@ -4,6 +4,31 @@ This repo contains an example submission for the CSE517P project.
 For this project, you will develop a program that takes in a string of character and tries to predict the next character.
 For illustration purposes, this repo contains a dummy program that simply generates 3 random guesses of the next character.
 
+## To Run
+
+Run these commands only from the root of the repo
+
+### To train
+
+```sh
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --data_fraction 1
+```
+
+### To Predict
+
+This command will run predict.py using the input file passed by `--test_data` and will write the output to `--test_output`.
+
+```sh
+python ./src/predict.py --work_dir ./work --test_data ./test/input.txt --test_output ./work/pred.txt
+```
+
+### To Evaluate 
+
+This command will calculate the percentage of the time that one of the top 3 characters in `{test_dir}/pred.txt` matches `{test_dir}/answer.txt`
+
+```sh
+python ./src/eval.py --test_dir ./test
+```
 
 ## Input format
 

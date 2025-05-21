@@ -26,6 +26,7 @@ class TransformerModelWrapper:
 
         self.vocab_file_path = os.path.join(work_directory, self.vocab_file_name)
         self.model_file_path = os.path.join(work_directory, self.model_file_name)
+        self.model_checkpoint_path = f"{work_directory}/checkpoints/{self.model_file_name}"
 
         self.index_to_char = None
         self.char_to_index = None
@@ -85,7 +86,6 @@ class TransformerModelWrapper:
 
         # TODO: Pass in the hyperparameters
         num_epochs = 5
-        warmup_steps = 500
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
         
@@ -101,18 +101,6 @@ class TransformerModelWrapper:
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
         self.loss_fn = torch.nn.CrossEntropyLoss()
-
-        last_dev_loss = np.inf
-        dev_increased_epoch_count = 0
-
-        # AI generated code
-        # Lambda function for linear warm-up
-        # def lr_lambda(current_step):
-        #     if current_step < warmup_steps:
-        #         return float(current_step) / float(max(1, warmup_steps))
-        #     return 1.0  # or add decay logic later
-
-        # scheduler = LambdaLR(self.optimizer, lr_lambda)
 
         # Training loop with dev loss evaluation
         for epoch in range(num_epochs):
@@ -130,28 +118,11 @@ class TransformerModelWrapper:
                 total_train_loss += loss.item()
 
             avg_train_loss = total_train_loss / len(train_loader)
-
-            # # Evaluate on dev set
-            # avg_dev_loss = self.eval_perplexity(dev_loader)
-            
-            # self.eval_perplexity(dev_loader)
-
-            # if avg_dev_loss > last_dev_loss:
-            #     dev_increased_epoch_count+=1
-            #     print(f"Dev loss has increased: {dev_increased_epoch_count} so far")
-            # else:
-            #     dev_increased_epoch_count=0
-
-            # last_dev_loss = avg_dev_loss
             
             print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
 
             # Save model after each epoch
-            torch.save(self.model.state_dict(), f"{self.model_file_path}.{epoch}")
-
-            # if dev_increased_epoch_count >= 3:
-            #     print("Dev loss increased three times in a row. Exiting training loop")
-            #     break
+            torch.save(self.model.state_dict(), f"{self.model_checkpoint_path}.{epoch}")
 
         torch.save(self.model.state_dict(), self.model_file_path)
         print(f"Model saved to character_transformer.pt")
