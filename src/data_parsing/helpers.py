@@ -43,7 +43,7 @@ class DatasetFileLoader():
         self.dev_data = None
         self.train_data = None
     
-    def load(self, data_directory, fraction=1):
+    def load(self, data_directory, fraction : float=1):
 
         files = [f for f in os.listdir(data_directory) if os.path.isfile(os.path.join(data_directory, f))]
 

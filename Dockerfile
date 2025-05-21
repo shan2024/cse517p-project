@@ -10,4 +10,5 @@ VOLUME ["/job/data", "/job/src", "/job/work", "/job/output"]
 # RUN pip install --no-cache-dir -r requirements.txt
 
 RUN pip install pandas
-
+RUN pip install np
+RUN pip typing
