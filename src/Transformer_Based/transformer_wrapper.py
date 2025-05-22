@@ -87,18 +87,12 @@ class TransformerModelWrapper:
         with torch.no_grad():
             start = time.perf_counter()
             logits = self.model(input_tensor)
-            print(f"[predict] model forward pass time: {time.perf_counter() - start:.2f}s")
-
             start = time.perf_counter()
             top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
-            print(f"[predict] topk time: {time.perf_counter() - start:.2f}s")
-
             start = time.perf_counter()
             # res = ["".join(self.index_to_char[i.item()] for i in row) for row in top3.indices]
             res = ["".join(self.index_to_char[j] for j in row) for row in top3]
             
-            print(f"[predict] decoding time: {time.perf_counter() - start:.2f}s")
-
         return res
 
     
