@@ -80,10 +80,14 @@ class TransformerModelWrapper:
 
         print(f"[predict] embed_strings time: {time.perf_counter() - start:.2f}s")
 
+        space_token_id = self.char_to_index[' ']
+
+
         with torch.no_grad():
             start = time.perf_counter()
             logits = self.model(input_tensor)
-            print(logits[0:10])
+            logits[:, space_token_id] = float('-inf')
+            print(logits[0:2])
             start = time.perf_counter()
             top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
             start = time.perf_counter()
