@@ -83,14 +83,16 @@ class TransformerModelWrapper:
         with torch.no_grad():
             start = time.perf_counter()
             logits = self.model(input_tensor)
+            print(logits[0:10])
             start = time.perf_counter()
             top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
             start = time.perf_counter()
             res = ["".join(self.index_to_char[j] for j in row) for row in top3]
             
         return res
+    
 
-    def train(self, data_directory, dataset_fraction: float=1.0):
+    def train(self, data_directory, dataset_fraction: float = 1.0, num_epochs: int = 1, lr: float = 1e-4, batch_size = 256):
 
         # TODO: Pass in the hyperparameters
         num_epochs = 5
@@ -102,12 +104,12 @@ class TransformerModelWrapper:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
 
         # Prepare datasets
-        train_loader = DataLoader(dataset.train_dataset(), batch_size=64, shuffle=True, pin_memory=True, num_workers=22)
-        #dev_loader = DataLoader(dataset.dev_dataset(), batch_size=10000)
+        num_workers = multiprocessing.cpu_count()
+        train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
 
         self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
         # Training loop with dev loss evaluation
@@ -122,8 +124,10 @@ class TransformerModelWrapper:
                 logits = self.model(x_batch)
                 loss = self.loss_fn(logits, y_batch)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 total_train_loss += loss.item()
+            
 
             avg_train_loss = total_train_loss / len(train_loader)
             
