@@ -29,7 +29,6 @@ if __name__ == '__main__':
     
     test_data_file = args.test_data
     output_file = args.test_output
-    print(test_data_file)
 
     test_input = load_test_input(test_data_file)
 
