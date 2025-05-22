@@ -6,6 +6,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from Transformer_Based.transformer_wrapper import TransformerModelWrapper
 import torch
 from helpers import load_test_input, write_pred
+import time
 
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -13,9 +14,13 @@ if __name__ == '__main__':
     parser.add_argument('--test_data', help='path to test data', default='test/input.txt')
     parser.add_argument('--test_output', help='path to write test predictions', default='pred.txt')
     parser.add_argument('--data_fraction', help='Fraction the training data to train on', default=1)
+    parser.add_argument('--time', help='Measure training time', action='store_true')
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    if args.time:
+        start_time = time.time()
 
     model = TransformerModelWrapper(device, args.work_dir)
 
@@ -31,3 +36,7 @@ if __name__ == '__main__':
     preds = model.predict(test_input)
 
     write_pred(preds, output_file)
+
+    if args.time:
+        end_time = time.time()
+        print(f"Running predict took {end_time-start_time}s")

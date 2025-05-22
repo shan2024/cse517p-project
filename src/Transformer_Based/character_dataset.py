@@ -22,7 +22,7 @@ class CharDataset(Dataset):
 
     def __getitem__(self, idx):
         input_seq = self.data_indices[idx:idx+self.context_len]
-        target_char = self.data_indices[self.data_indices[idx+self.context_len]]
+        target_char = self.data_indices[idx + self.context_len]
         return input_seq, target_char
     
 class CharDatasetWrapper():
@@ -42,8 +42,8 @@ class CharDatasetWrapper():
         # Build vocabulary 
         self._vocab, _ = build_vocab(train_text)
 
-        train_data = torch.tensor([self._vocab[char] for char in train_text if char in self._vocab])
-        dev_data = torch.tensor([self._vocab[char] for char in dev_text if char in self._vocab])
+        train_data = torch.tensor([self._vocab[char] for char in train_text if char in self._vocab], dtype=torch.long)
+        dev_data = torch.tensor([self._vocab[char] for char in dev_text if char in self._vocab], dtype=torch.long)
 
         self._train_dataset = CharDataset(train_data,  context_length)
         self._dev_dataset = CharDataset(dev_data, context_length)

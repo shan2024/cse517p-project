@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
 
+LOG_100k = -9.21034049987793
+
 class PositionEncoding(nn.Module):
     def __init__(self, embedding_dim, max_length=512):
         super().__init__()
         position_encoding = torch.zeros(max_length, embedding_dim)
         positions = torch.arange(0, max_length, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, embedding_dim, 2).float() * (-torch.log(torch.tensor(10000.0)) / embedding_dim))
+        div_term = torch.exp(torch.arange(0, embedding_dim, 2).float() * (LOG_100k / embedding_dim))
         position_encoding[:, 0::2] = torch.sin(positions * div_term)
         position_encoding[:, 1::2] = torch.cos(positions * div_term)
         position_encoding = position_encoding.unsqueeze(0)
@@ -21,14 +23,10 @@ class CharacterTransformer(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.pos_encoder = PositionEncoding(embedding_dim)
-        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout)
+        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers)
         self.output_layer = nn.Linear(embedding_dim, vocab_size)
 
+
     def forward(self, input_seq):
-        embeddings = self.embedding(input_seq)
-        positioned = self.pos_encoder(embeddings)
-        transposed = positioned.permute(1, 0, 2)
-        encoded = self.transformer_encoder(transposed)
-        
-        return self.output_layer(encoded[-1])
+        return self.output_layer(self.transformer_encoder(self.pos_encoder(self.embedding(input_seq)))[:, -1, :]  )         # (batch, vocab_size)
