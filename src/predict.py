@@ -32,7 +32,12 @@ if __name__ == '__main__':
 
     test_input = load_test_input(test_data_file)
 
-    preds = model.predict(test_input)
+    batch_size = 5000
+
+    preds = []
+    for i in range(0, len(test_input), batch_size):
+        batch = test_input[i:i + batch_size]
+        preds.extend(model.predict(batch))
 
     write_pred(preds, output_file)
 
