@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import LambdaLR
 import multiprocessing
 from torch.amp import autocast, GradScaler 
 import time
+from torch.optim.lr_scheduler import OneCycleLR
+
 
 class TransformerModelWrapper:
     def __init__(self, device, work_directory):
@@ -86,52 +88,72 @@ class TransformerModelWrapper:
         return res
     
 
-    def train(self, data_directory, dataset_fraction: float = 1.0, num_epochs: int = 1, lr: float = 1e-4, batch_size = 256):
+    import time
+    import json
+    import multiprocessing
+    import torch
+    from torch.utils.data import DataLoader
+    from torch.optim.lr_scheduler import OneCycleLR
 
-        # TODO: Pass in the hyperparameters
-        num_epochs = 5
+    def train(self, data_directory, dataset_fraction: float = 1.0, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048):
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
-        
-        # Write the vocab to a file
+
         with open(self.vocab_file_path, "w", encoding="utf-8") as f:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
-
-        # Prepare datasets
-        num_workers = multiprocessing.cpu_count()
-        train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
+        
+        num_workers = min(20, multiprocessing.cpu_count() - 2)
+        train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
+        scaler = GradScaler()
 
         self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
 
+        # After model creation
+        # if hasattr(torch, 'compile'):
+        #     self.model = torch.compile(self.model)
+
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
+        scheduler = OneCycleLR(
+            self.optimizer,
+            max_lr=lr,
+            steps_per_epoch=len(train_loader),
+            epochs=num_epochs,
+            pct_start=0.1,
+            anneal_strategy="cos",
+            final_div_factor=1e4,
+        )
 
-        # Training loop with dev loss evaluation
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
 
-            for x_batch, y_batch in train_loader:
+            for step, (x_batch, y_batch) in enumerate(train_loader):
+
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
-                self.optimizer.zero_grad()
-                logits = self.model(x_batch)
-                loss = self.loss_fn(logits, y_batch)
-                loss.backward()
+
+                with autocast(device_type=self.device.type):
+                    logits = self.model(x_batch)
+                    loss = self.loss_fn(logits, y_batch)
+                
+                scaler.scale(loss).backward()
+                scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                self.optimizer.step()
+                scaler.step(self.optimizer)
+                scaler.update()
+                scheduler.step()
+
                 total_train_loss += loss.item()
-            
 
             avg_train_loss = total_train_loss / len(train_loader)
-            
-            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
 
-            # Save model after each epoch
+            print(f"[train] Epoch {epoch + 1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
+
             torch.save(self.model.state_dict(), f"{self.model_checkpoint_path}.{epoch}")
 
         torch.save(self.model.state_dict(), self.model_file_path)
-        print(f"Model saved to character_transformer.pt")
+        print(f"[train] Model saved to {self.model_file_path}")
 
     def eval_perplexity(self, dataloader: DataLoader):
         self.model.eval()
