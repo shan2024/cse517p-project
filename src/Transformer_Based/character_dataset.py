@@ -4,11 +4,33 @@ import pandas as pd
 
 from data_parsing.helpers import DatasetFileLoader
 
-def build_vocab(text):
-    unique_chars = sorted(set(text))
-    unique_chars.remove('\n')
-    char_to_index = {char: idx for idx, char in enumerate(unique_chars)}
+# def build_vocab(text):
+#     unique_chars = sorted(set(text))
+#     unique_chars.remove('\n')
+#     char_to_index = {char: idx for idx, char in enumerate(unique_chars)}
+#     index_to_char = {idx: char for char, idx in char_to_index.items()}
+#     return char_to_index, index_to_char
+
+
+def build_vocab(text=None):
+    """Create a vocabulary of printable lowercase English and Spanish characters."""
+    import string
+    
+    # Start with ASCII printable characters but filter out uppercase and control chars
+    printable_chars = [char for char in string.printable 
+                      if not char.isupper() 
+                      and char not in ['\t', '\n', '\r', '\v', '\f']]
+    
+    # Add only lowercase Spanish-specific characters
+    spanish_chars = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ', '¿', '¡']
+    
+    # Combine and sort all characters
+    all_chars = sorted(set(printable_chars + spanish_chars))
+    
+    # Create the mappings
+    char_to_index = {char: idx for idx, char in enumerate(all_chars)}
     index_to_char = {idx: char for char, idx in char_to_index.items()}
+    
     return char_to_index, index_to_char
 
 class CharDataset(Dataset):

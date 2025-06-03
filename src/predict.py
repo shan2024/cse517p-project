@@ -15,6 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_output', help='path to write test predictions', default='pred.txt')
     parser.add_argument('--data_fraction', help='Fraction the training data to train on', default=1)
     parser.add_argument('--time', help='Measure training time', action='store_true')
+    parser.add_argument('--continue_training', help='Continue to train an exisiting model', action='store_true')
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

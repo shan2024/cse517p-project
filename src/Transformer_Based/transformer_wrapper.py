@@ -55,7 +55,7 @@ class TransformerModelWrapper:
         #load the model
         self.model = CharacterTransformer(vocab_size).to(self.device)
         self.model.load_state_dict(torch.load(self.model_file_path, map_location=self.device))
-        self.model.eval().half()
+       
     
     def embed_strings(self, inputs: list[str]):
         pad_token = self.char_to_index[' ']
@@ -77,6 +77,7 @@ class TransformerModelWrapper:
         return torch.from_numpy(encoded).to(self.device)
 
     def predict(self, input: list[str]):
+        self.model.eval().half()
         input_tensor = self.embed_strings(input)
 
         space_token_id = self.char_to_index[' ']
@@ -93,10 +94,10 @@ class TransformerModelWrapper:
     from torch.utils.data import DataLoader
     from torch.optim.lr_scheduler import OneCycleLR
 
-    def train(self, data_directory, dataset_fraction: float = 1.0, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048):
+    def train(self, data_directory, continue_training: bool = True, dataset_fraction: float = 1.0, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048):
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
-
+        
         with open(self.vocab_file_path, "w", encoding="utf-8") as f:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
 
@@ -107,7 +108,11 @@ class TransformerModelWrapper:
         num_workers = min(20, multiprocessing.cpu_count() - 2)
         train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
 
-        self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
+        #If this flag is true, then load in and continue to train an existing model instead of creating a new one from scratch
+        if continue_training:
+            self.load()
+        else:
+            self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
 
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
