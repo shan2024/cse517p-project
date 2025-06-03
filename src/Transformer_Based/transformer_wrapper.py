@@ -81,11 +81,11 @@ class TransformerModelWrapper:
 
         space_token_id = self.char_to_index[' ']
 
-
         with torch.no_grad():
             logits = self.model(input_tensor)
             logits[:, space_token_id] = float('-inf')
             top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
+
             res = ["".join(self.index_to_char[j] for j in row) for row in top3]
             
         return res
@@ -133,8 +133,6 @@ class TransformerModelWrapper:
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
-
-            epoch_start = time.time()
 
             # Add progress bar
             for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
