@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import LambdaLR
 import multiprocessing
 from torch.amp import autocast, GradScaler 
 import time
+from tqdm import tqdm
 from torch.optim.lr_scheduler import OneCycleLR
 
 
@@ -30,6 +31,9 @@ class TransformerModelWrapper:
 
         self.vocab_file_path = os.path.join(work_directory, self.vocab_file_name)
         self.model_file_path = os.path.join(work_directory, self.model_file_name)
+        #Create the checkpoints folder if it doesn't exist
+        os.makedirs(os.path.join(self.work_directory, "checkpoints"), exist_ok=True)
+
         self.model_checkpoint_path = f"{work_directory}/checkpoints/{self.model_file_name}"
 
         self.index_to_char = None
@@ -95,12 +99,20 @@ class TransformerModelWrapper:
 
         with open(self.vocab_file_path, "w", encoding="utf-8") as f:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
-        
+
+        # Ensure checkpoints directory exists
+        os.makedirs(os.path.join(self.work_directory, "checkpoints"), exist_ok=True)
+
+        # Prepare datasets
         num_workers = min(20, multiprocessing.cpu_count() - 2)
         train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
-        scaler = GradScaler()
 
         self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
+
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        
+        scaler = GradScaler()
 
         # After model creation
         # if hasattr(torch, 'compile'):
@@ -122,23 +134,30 @@ class TransformerModelWrapper:
             self.model.train()
             total_train_loss = 0
 
-            for step, (x_batch, y_batch) in enumerate(train_loader):
+            epoch_start = time.time()
 
+            # Add progress bar
+            for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
+                self.optimizer.zero_grad()
 
+                # AMP forward
                 with autocast(device_type=self.device.type):
                     logits = self.model(x_batch)
                     loss = self.loss_fn(logits, y_batch)
-                
+
+                # AMP backward
                 scaler.scale(loss).backward()
-                scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 scaler.step(self.optimizer)
                 scaler.update()
                 scheduler.step()
 
+                scaler.unscale_(self.optimizer)
+
                 total_train_loss += loss.item()
+                
 
             avg_train_loss = total_train_loss / len(train_loader)
 
