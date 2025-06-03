@@ -72,7 +72,6 @@ class TransformerModelWrapper:
         # Convert once to torch tensor and move to GPU
         return torch.from_numpy(encoded).to(self.device)
 
-
     def predict(self, input: list[str]):
         input_tensor = self.embed_strings(input)
 
@@ -87,11 +86,6 @@ class TransformerModelWrapper:
             
         return res
     
-
-    import time
-    import json
-    import multiprocessing
-    import torch
     from torch.utils.data import DataLoader
     from torch.optim.lr_scheduler import OneCycleLR
 
