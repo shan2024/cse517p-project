@@ -35,7 +35,7 @@ def main():
     # Run evaluation for each language directory
     for language, test_dir in test_dirs.items():
 
-        start = time.perf_counter()
+        
         
         if not os.path.exists(test_dir):
             print(f"Warning: Test directory {test_dir} does not exist. Skipping {language} evaluation.")
@@ -51,6 +51,8 @@ def main():
             
             # Load test input
             test_input = load_test_input(input_file)
+
+            start = time.perf_counter()
             
             # Generate predictions in batches to avoid memory issues
             batch_size = 5000
@@ -58,10 +60,17 @@ def main():
             for i in range(0, len(test_input), batch_size):
                 batch = test_input[i:i + batch_size]
                 preds.extend(model.predict(batch))
+
+            end = time.perf_counter()
+            elapsed_time = end - start
+            
+            # Calculate number of examples and time per prediction
+            num_examples = len(test_input)
+            ms_per_prediction = (elapsed_time / num_examples) * 1000 if num_examples > 0 else 0
             
             # Write predictions to file
             write_pred(preds, pred_file)
-            
+
             # Step 2: Direct evaluation using helpers
             print(f"Evaluating accuracy for {language}...")
             
@@ -76,24 +85,36 @@ def main():
             top3_pct = top3_acc * 100
             
             # Store results
-            results.append([language, f"{top1_pct:.2f}%", f"{top3_pct:.2f}%"])
+            results.append([
+                language, 
+                f"{top1_pct:.2f}%", 
+                f"{top3_pct:.2f}%", 
+                f"{elapsed_time:.2f} sec",
+                f"{num_examples}",
+                f"{ms_per_prediction:.2f} ms"
+            ])
             
             # Print results
             print(f"Top-1 Accuracy: {top1_acc:.2%}")
             print(f"Top-3 Accuracy: {top3_acc:.2%}")
+            print(f"Number of examples: {num_examples}")
+            print(f"Time per prediction: {ms_per_prediction:.2f} ms")
             
         except Exception as e:
             print(f"Error during evaluation for {language}: {e}")
-            results.append([language, "Error", "Error"])
+            results.append([language, "Error", "Error", "Error", "Error", "Error"])
 
-        end = time.perf_counter()
-
-        print(f"Time: {end-start}")
-    
     # Print summary table
     if results:
         print("\n===== SUMMARY =====")
-        print(tabulate(results, headers=["Language", "Top-1 Accuracy", "Top-3 Accuracy"], tablefmt="grid"))
+        print(tabulate(results, headers=[
+            "Language", 
+            "Top-1 Accuracy", 
+            "Top-3 Accuracy", 
+            "Total Time", 
+            "Examples", 
+            "ms/prediction"
+        ], tablefmt="grid"))
     else:
         print("\nNo results were generated.")
 
