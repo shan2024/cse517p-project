@@ -12,7 +12,7 @@ import csv
 # Access Token: Will be provided
 # For more languages, you can visit https://huggingface.co/datasets/uonlp/CulturaX and add them here in the list
 # Selecting target languages here. TODO: Add more languages if needed.
-langs = ["es"] 
+langs = ["es", "cmn"] 
 lines_per_lang = 5000 # Number of lines to sample per language
 output_dir = "data/parsed_data"
 

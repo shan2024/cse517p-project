@@ -55,7 +55,14 @@ class TransformerModelWrapper:
         #load the model
         self.model = CharacterTransformer(vocab_size).to(self.device)
         self.model.load_state_dict(torch.load(self.model_file_path, map_location=self.device))
-        self.model.eval().half()
+
+        non_compiled_model = self.model
+        
+        if hasattr(torch, 'compile'):
+            self.model = torch.compile(self.model)
+
+        return non_compiled_model
+       
     
     def embed_strings(self, inputs: list[str]):
         pad_token = self.char_to_index[' ']
@@ -77,15 +84,16 @@ class TransformerModelWrapper:
         return torch.from_numpy(encoded).to(self.device)
 
     def predict(self, input: list[str]):
+        self.model.eval().half()
         input_tensor = self.embed_strings(input)
 
         space_token_id = self.char_to_index[' ']
-
 
         with torch.no_grad():
             logits = self.model(input_tensor)
             logits[:, space_token_id] = float('-inf')
             top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
+
             res = ["".join(self.index_to_char[j] for j in row) for row in top3]
             
         return res
@@ -93,10 +101,10 @@ class TransformerModelWrapper:
     from torch.utils.data import DataLoader
     from torch.optim.lr_scheduler import OneCycleLR
 
-    def train(self, data_directory, dataset_fraction: float = 1.0, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048):
+    def train(self, data_directory, continue_training: bool = True, dataset_fraction: float = 1.0, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048):
 
         dataset = CharDatasetWrapper(self.device, data_directory, self.context_length, dataset_fraction)
-
+        
         with open(self.vocab_file_path, "w", encoding="utf-8") as f:
             json.dump(dataset.vocab(), f, ensure_ascii=False, indent=2)
 
@@ -107,16 +115,25 @@ class TransformerModelWrapper:
         num_workers = min(20, multiprocessing.cpu_count() - 2)
         train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
 
-        self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
+        original_model = None
+        
+        #If this flag is true, then load in and continue to train an existing model instead of creating a new one from scratch
+        if continue_training:
+            original_model = self.load()
+        else:
+            self.model = CharacterTransformer(dataset.vocab_size()).to(self.device)
+            
+            original_model = self.model
+            
+            if hasattr(torch, 'compile'):
+                self.model = torch.compile(self.model)
+            
+            
 
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
         
         scaler = GradScaler()
-
-        # After model creation
-        # if hasattr(torch, 'compile'):
-        #     self.model = torch.compile(self.model)
 
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.CrossEntropyLoss()
@@ -133,8 +150,6 @@ class TransformerModelWrapper:
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
-
-            epoch_start = time.time()
 
             # Add progress bar
             for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
@@ -158,14 +173,17 @@ class TransformerModelWrapper:
 
                 total_train_loss += loss.item()
                 
-
             avg_train_loss = total_train_loss / len(train_loader)
 
             print(f"[train] Epoch {epoch + 1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
 
             torch.save(self.model.state_dict(), f"{self.model_checkpoint_path}.{epoch}")
 
-        torch.save(self.model.state_dict(), self.model_file_path)
+        if hasattr(torch, 'compile'):
+            # Need to save the Og model not the compiled version to avoid problems
+            torch.save(original_model.state_dict(), self.model_file_path)
+        else:
+            torch.save(self.model.state_dict(), self.model_file_path)
         print(f"[train] Model saved to {self.model_file_path}")
 
     def eval_perplexity(self, dataloader: DataLoader):
