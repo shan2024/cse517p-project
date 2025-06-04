@@ -18,12 +18,14 @@ def main():
                         help="Base directory containing test data")
     args = parser.parse_args()
     
-    # Define the test directories for each language
-    test_dirs = {
-        "Combined": args.test_base_dir,
-        "English": os.path.join(args.test_base_dir, "english"),
-        "Spanish": os.path.join(args.test_base_dir, "spanish")
-    }
+    # Dynamically build test directories from subdirectories
+    test_dirs = {"Combined": args.test_base_dir}
+    
+    # Add all subdirectories as separate languages
+    for item in os.listdir(args.test_base_dir):
+        full_path = os.path.join(args.test_base_dir, item)
+        if os.path.isdir(full_path):
+            test_dirs[item] = full_path
     
     results = []
     

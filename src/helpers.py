@@ -22,7 +22,7 @@ def get_top1_accuracy(gold, pred):
     """
     correct = 0
     for i, (g, p) in enumerate(zip(gold, pred)):
-        if len(p) > 2 and p[2] == g:
+        if len(p) > 2 and p[0] == g:
             correct += 1
     return correct / len(gold)
 
