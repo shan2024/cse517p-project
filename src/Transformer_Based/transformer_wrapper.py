@@ -114,6 +114,7 @@ class TransformerModelWrapper:
         # Prepare datasets
         num_workers = min(20, multiprocessing.cpu_count() - 2)
         train_loader = DataLoader(dataset.train_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
+        dev_loader = DataLoader(dataset.dev_dataset(), batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers,  prefetch_factor=2, persistent_workers=True)
 
         original_model = None
         
@@ -127,7 +128,6 @@ class TransformerModelWrapper:
             
             if hasattr(torch, 'compile'):
                 self.model = torch.compile(self.model)
-            
             
 
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
@@ -175,7 +175,9 @@ class TransformerModelWrapper:
                 
             avg_train_loss = total_train_loss / len(train_loader)
 
-            print(f"[train] Epoch {epoch + 1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}")
+            dev_loss = self.eval_loss(dev_loader)
+
+            print(f"[train] Epoch {epoch + 1}/{num_epochs} - Train Loss: {avg_train_loss:.4f}. Dev Loss: {dev_loss:.4f}")
 
             torch.save(self.model.state_dict(), f"{self.model_checkpoint_path}.{epoch}")
 
@@ -185,8 +187,8 @@ class TransformerModelWrapper:
         else:
             torch.save(self.model.state_dict(), self.model_file_path)
         print(f"[train] Model saved to {self.model_file_path}")
-
-    def eval_perplexity(self, dataloader: DataLoader):
+    
+    def eval_loss(self, dataloader: DataLoader):
         self.model.eval()
         total_dev_loss = 0
         with torch.no_grad():
@@ -197,4 +199,5 @@ class TransformerModelWrapper:
                 total_dev_loss += loss.item()
                 
         avg_dev_loss = total_dev_loss / len(dataloader)
+
         return avg_dev_loss
