@@ -14,12 +14,29 @@ def write_pred(preds, fname):
         for p in preds:
             f.write('{}\n'.format(p))
 
-def get_accuracy(gold, pred):
+def get_top1_accuracy(gold, pred):
+    """
+    Returns the fraction of cases where the first character in pred matches the gold label.
+    pred: list of strings, each string contains 3 possible characters (predictions)
+    gold: list of strings, each string is the gold label
+    """
     correct = 0
-    for i, (p, g) in enumerate(zip(gold, pred)):
-        right = p in g
-        correct += right
-    return correct/len(gold)
+    for i, (g, p) in enumerate(zip(gold, pred)):
+        if len(p) > 2 and p[2] == g:
+            correct += 1
+    return correct / len(gold)
+
+def get_top3_accuracy(gold, pred):
+    """
+    Returns the fraction of cases where any character in pred matches the gold label.
+    pred: list of strings, each string contains 3 possible characters (predictions)
+    gold: list of strings, each string is the gold label
+    """
+    correct = 0
+    for i, (g, p) in enumerate(zip(gold, pred)):
+        if g in p:
+            correct += 1
+    return correct / len(gold)
 
 def load_true(test_dir):
     with open(f"{test_dir}/answer.txt", encoding='utf-8') as f:
