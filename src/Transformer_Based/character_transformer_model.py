@@ -21,14 +21,14 @@ class CharacterTransformer(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.pos_encoder = PositionEncoding(embedding_dim)
-        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout)
+        encoder_layer = nn.TransformerEncoderLayer(embedding_dim, num_heads, ff_dim, dropout, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers)
         self.output_layer = nn.Linear(embedding_dim, vocab_size)
 
     def forward(self, input_seq):
         embeddings = self.embedding(input_seq)
         positioned = self.pos_encoder(embeddings)
-        transposed = positioned.permute(1, 0, 2)
-        encoded = self.transformer_encoder(transposed)
+        encoded = self.transformer_encoder(positioned)
         
-        return self.output_layer(encoded[-1])
+        # Change this line to select the last token for each sequence in the batch
+        return self.output_layer(encoded[:, -1, :])
