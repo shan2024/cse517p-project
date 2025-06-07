@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from Transformer_Based.character_dataset import CharDatasetWrapper
 from Transformer_Based.transformer_wrapper import TransformerModelWrapper
 import torch
 import random
@@ -19,12 +20,17 @@ if __name__ == '__main__':
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = TransformerModelWrapper(device, args.work_dir)
+    model = TransformerModelWrapper(device, args.work_dir, use_existing_vocab=False)
+
+    dataset = CharDatasetWrapper(model.vocab, args.data_dir, model.context_length, float(args.data_fraction))
+
+    if args.continue_training:
+        model.load()
 
     if args.time:
         start_time = time.time()
 
-    model.train(args.data_dir, continue_training=args.continue_training, dataset_fraction= float(args.data_fraction))
+    model.train(dataset)
 
     if args.time:
         elapsed_time = time.time() - start_time
