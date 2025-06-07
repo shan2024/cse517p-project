@@ -118,7 +118,9 @@ if __name__ == '__main__':
 
     loader.test_data = loader.test_data.drop(index=0)
 
-    test_data_by_language = {"english": ["test_nasa.csv", "test_trek.csv"], "spanish": ["test_culturax_spanish.csv"]}
+    test_data_by_language = {"english": ["test_nasa.csv", "test_trek.csv"], 
+                             "spanish": ["test_culturax_es.csv"], 
+                             "Chinese": ["test_culturax_zh.csv"]}
 
     # Process test data for each language
     for language, csv_files in test_data_by_language.items():
