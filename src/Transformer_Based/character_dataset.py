@@ -9,7 +9,6 @@ class CharDataset(Dataset):
         self.context_len = context_len
         self.data_indices = data 
 
-        print(self.data_indices)
     def __len__(self):
         return len(self.data_indices) - self.context_len
 

@@ -18,23 +18,21 @@ from torch.optim.lr_scheduler import OneCycleLR
 
 
 class TransformerModelWrapper:
-    def __init__(self, device, work_directory, use_existing_vocab=True):
+    def __init__(self, device, work_directory, context_length = 32, use_existing_vocab=True):
         """
         Load in trained model and vocab
         """
         # The model's files will be saved and loaded from this directory
         self.work_directory = work_directory
 
-        #input size must be 32 characters. If it is more or less it is padded or truncated
-        self.context_length = 32
+        self.context_length = context_length
+
         self.device = device
-        self.vocab_file_name = "char_to_index.json"
         self.model_file_name = "character_transformer.pt"
-        
         self.model_file_path = os.path.join(work_directory, self.model_file_name)
         
         # Set up vocab
-        vocab_file_path = os.path.join(work_directory, self.vocab_file_name)
+        vocab_file_path = os.path.join(work_directory, "char_to_index.json")
 
         # If the vocab file already exists then we should load it in
         if os.path.exists(vocab_file_path) and use_existing_vocab:
@@ -82,18 +80,19 @@ class TransformerModelWrapper:
 
 
     def predict(self, input: list[str]):
-        self.model.eval().half()
+        self.model.eval()
         input_tensor = self.embed_strings(input)
-
+    
         with torch.no_grad():
-            #TODO: Compiled model is slower. Determine if this is still the case with larger models
-            logits = self.model(input_tensor)
+            with torch.autocast(device_type=self.device.type, dtype=torch.float16):
+                #TODO: Compiled model is slower. Determine if this is still the case with larger models
+                logits = self.model(input_tensor)
 
-            logits[:, self.PAD_TOKEN] = float('-inf')
-            top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
+                logits[:, self.PAD_TOKEN] = float('-inf')
+                top3 = torch.topk(logits, k=3, dim=1).indices.cpu().tolist()
 
-            res = ["".join(self.index_to_char[j] for j in row) for row in top3]
-            
+                res = ["".join(self.index_to_char[j] for j in row) for row in top3]
+        
         return res
     
     def train(self, dataset: CharDatasetWrapper, num_epochs: int = 3, lr: float = 1e-4, batch_size=1048, verbose=True, save_checkpoints=False):
@@ -142,12 +141,11 @@ class TransformerModelWrapper:
 
                 # AMP backward
                 scaler.scale(loss).backward()
+                scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.compiled_model.parameters(), max_norm=1.0)
                 scaler.step(self.optimizer)
                 scaler.update()
                 scheduler.step()
-
-                scaler.unscale_(self.optimizer)
 
                 if verbose:
                     total_train_loss += loss.item()
