@@ -1,44 +1,8 @@
 import os
-import json
-import re
-from typing import List, Tuple, Dict, Union
-from pprint import pprint
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-import nltk
-from nltk.tokenize import word_tokenize
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import SentenceTransformer
-import torch
-from torch.utils.data import TensorDataset, DataLoader
-import torch.nn as nn
-from torch.optim import Adam
-import numpy as np
-import importlib
-from collections import Counter
-import random
-
-import sys
-import os
-
-import os
-import string
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from Transformer_Based.transformer_wrapper import TransformerModelWrapper
-import torch
-from helpers import load_test_input, write_pred
-import time
-
 from helpers import DatasetFileLoader
-
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using {DEVICE} device")
-
-
-import random
-import pandas as pd
 
 def to_sample_and_expected_result(data, min_input_size = 3, max_input_size=300):
     """
@@ -105,6 +69,34 @@ def write_test_data(test_data_dir, x_test, y_test):
         for item in y_test:
             f.write(f"{item}\n")
 
+def discover_test_files(data_directory):
+    """
+    Discover test files automatically based on naming convention.
+    Returns a dictionary mapping language codes to their test files.
+    """
+    test_files = {}
+    
+    # Get all CSV files in the data directory
+    if not os.path.exists(data_directory):
+        print(f"Warning: Data directory {data_directory} does not exist.")
+        return test_files
+    
+    for filename in os.listdir(data_directory):
+        if filename.startswith('test_') and filename.endswith('.csv'):
+            if filename.startswith('test_culturax_'):
+                # Extract language code from test_culturax_XX.csv
+                lang_code = filename.replace('test_culturax_', '').replace('.csv', '')
+                if lang_code not in test_files:
+                    test_files[lang_code] = []
+                test_files[lang_code].append(filename)
+            elif filename in ['test_nasa.csv', 'test_trek.csv']:
+                # Handle English test files
+                if 'en' not in test_files:
+                    test_files['en'] = []
+                test_files['en'].append(filename)
+    
+    return test_files
+
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data_directory', help='Directory containing clean data', default='data/parsed_data')
@@ -118,17 +110,22 @@ if __name__ == '__main__':
 
     loader.test_data = loader.test_data.drop(index=0)
 
-    test_data_by_language = {"english": ["test_nasa.csv", "test_trek.csv"], 
-                             "spanish": ["test_culturax_es.csv"], 
-                             "Chinese": ["test_culturax_zh.csv"]}
+    # Automatically discover test files by language
+    test_data_by_language = discover_test_files(args.data_directory)
+    
+    print(f"Discovered test files for languages: {list(test_data_by_language.keys())}")
 
     # Process test data for each language
-    for language, csv_files in test_data_by_language.items():
-        print(f"Processing {language} test data...")
+    for lang_code, csv_files in test_data_by_language.items():
+        print(f"Processing {lang_code} test data...")
         
-        # Create language-specific directory
-        language_dir = os.path.join(args.test_data, language)
+        # Create language-specific directory using language code
+        language_dir = os.path.join(args.test_data, lang_code)
         os.makedirs(language_dir, exist_ok=True)
+        
+        # Combine all test samples for this language
+        all_x_test = []
+        all_y_test = []
         
         # Load and process each CSV file for the language
         for csv_file in csv_files:
@@ -145,9 +142,16 @@ if __name__ == '__main__':
             # Generate test samples
             x_test, y_test = to_sample_and_expected_result(data_df.iloc[:, 0])
             
-            # Write the test data
-            write_test_data(language_dir, x_test, y_test)
-            print(f"  Wrote {len(x_test)} test samples for {csv_file}")
+            all_x_test.extend(x_test)
+            all_y_test.extend(y_test)
+            print(f"  Added {len(x_test)} test samples from {csv_file}")
+        
+        # Write the combined test data for this language
+        if all_x_test:
+            write_test_data(language_dir, all_x_test, all_y_test)
+            print(f"  Total: {len(all_x_test)} test samples for {lang_code}")
+        else:
+            print(f"  No test samples generated for {lang_code}")
         
     # Also process the combined test data as before
     x_test, y_test = to_sample_and_expected_result(loader.test_data[0])

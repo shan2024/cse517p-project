@@ -4,3 +4,6 @@ output/
 submit/
 submit.zip
 .venv/
+work
+/data/parsed_data
+/test
