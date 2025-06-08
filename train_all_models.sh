@@ -5,7 +5,7 @@
 mkdir -p ./work_models
 
 # Define character sets to train
-CHARSETS=("latin" "cyrillic" "cjk" "arabic" "devanagari" "all")
+CHARSETS=("all" "latin" "cyrillic" "cjk" "arabic" "devanagari")
 
 # Train individual models for each character set
 for charset in "${CHARSETS[@]}"; do

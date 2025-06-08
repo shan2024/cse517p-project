@@ -3,6 +3,39 @@ Helper module for Arabic and Devanagari character sets.
 Contains character ranges and common characters for both scripts.
 """
 import string
+import os
+import json
+
+def load_script_vocab(script_name):
+    """Load vocabulary from a pre-generated vocab file.
+    
+    Args:
+        script_name: Name of the script (e.g., 'arabic', 'devanagari')
+    
+    Returns:
+        List of characters
+        
+    Raises:
+        FileNotFoundError: If the vocabulary file doesn't exist
+        ValueError: If the vocabulary file doesn't contain a valid vocabulary
+    """
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    vocab_file = os.path.join(project_root, 'data/vocab_files', f'{script_name}_vocab.json')
+    
+    if not os.path.exists(vocab_file):
+        raise FileNotFoundError(f"{script_name} vocabulary file not found at {vocab_file}")
+    
+    try:
+        print(f"Loading {script_name} vocabulary from {vocab_file}")
+        with open(vocab_file, 'r', encoding='utf-8') as f:
+            vocab_data = json.load(f)
+            if 'vocabulary' not in vocab_data:
+                raise ValueError(f"Invalid vocabulary file format: 'vocabulary' key not found in {vocab_file}")
+            chars = vocab_data['vocabulary']
+        print(f"Loaded {len(chars)} {script_name} characters")
+        return chars
+    except Exception as e:
+        raise RuntimeError(f"Error loading {script_name} vocabulary file: {e}")
 
 def get_arabic_char_ranges():
     """Return Unicode ranges for Arabic script characters"""
@@ -124,9 +157,9 @@ def build_devanagari_charset():
     return chars
 
 def arabic_vocab():
-    """Return a list of common Arabic script characters"""
-    return build_arabic_charset()
+    """Return a list of common Arabic script characters from the vocabulary file."""
+    return load_script_vocab('arabic')
 
 def devanagari_vocab():
-    """Return a list of common Devanagari script characters used in Hindi, Marathi, and Nepali"""
-    return build_devanagari_charset()
+    """Return a list of common Devanagari script characters from the vocabulary file."""
+    return load_script_vocab('devanagari')

@@ -9,6 +9,41 @@ from .arabic_devanagari_support import arabic_vocab, devanagari_vocab
 
 CONTROL_CHARS = ['\t', '\n', '\r', '\v', '\f']
 
+def load_vocab_from_file(script_group):
+    """Load vocabulary from a pre-generated vocab file for a script group.
+    
+    Args:
+        script_group: The script group name (e.g., 'cjk', 'arabic', 'cyrillic')
+    
+    Returns:
+        List of characters
+        
+    Raises:
+        FileNotFoundError: If the vocabulary file doesn't exist
+        ValueError: If the vocabulary file doesn't contain a valid vocabulary
+    """
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    vocab_files_dir = os.path.join(project_root, 'data/vocab_files')
+    
+    # Normalize script group name (in case it contains subdirectories)
+    normalized_name = script_group.replace('/', '_')
+    vocab_file = os.path.join(vocab_files_dir, f'{normalized_name}_vocab.json')
+    
+    if not os.path.exists(vocab_file):
+        raise FileNotFoundError(f"Vocabulary file for {script_group} not found at {vocab_file}")
+    
+    try:
+        print(f"Loading vocabulary for {script_group} from {vocab_file}")
+        with open(vocab_file, 'r', encoding='utf-8') as f:
+            vocab_data = json.load(f)
+            if 'vocabulary' not in vocab_data:
+                raise ValueError(f"Invalid vocabulary file format: 'vocabulary' key not found in {vocab_file}")
+            chars = vocab_data['vocabulary']
+        print(f"Loaded {len(chars)} characters for {script_group}")
+        return chars
+    except Exception as e:
+        raise RuntimeError(f"Error loading {script_group} vocabulary file: {e}")
+
 def build_vocab(charset="all"):
     """Create a vocabulary of characters based on the specified charset.
     
@@ -35,21 +70,28 @@ def build_vocab(charset="all"):
     for cs in charsets:
         if cs == "latin" or cs == "all":
             print("Adding Latin characters")
+            # For Latin, keep the manually defined character sets
             all_chars.update(build_latin_charset())
+            
         if cs == "cyrillic" or cs == "all":
             print("Adding Cyrillic characters")
-            all_chars.update(build_cyrillic_charset())
+            # Load from vocab file, with no fallback
+            cyrillic_chars = load_vocab_from_file("cyrillic")
+            all_chars.update(cyrillic_chars)
             
         if cs == "cjk" or cs == "all":
             print("Adding CJK characters")
-            all_chars.update(get_common_cjk_chars(2000))
+            # The get_common_cjk_chars function now loads from vocab files
+            all_chars.update(get_common_cjk_chars())
         
         if cs == "arabic" or cs == "all":
             print("Adding Arabic script characters")
+            # Load from vocab file via the arabic_vocab function
             all_chars.update(arabic_vocab())
         
         if cs == "devanagari" or cs == "all":
             print("Adding Devanagari script characters")
+            # Load from vocab file via the devanagari_vocab function
             all_chars.update(devanagari_vocab())
     
     # Create the mappings
@@ -58,77 +100,20 @@ def build_vocab(charset="all"):
     print(f"Created vocabulary with {len(char_to_index)} characters")
     return char_to_index
 
-def get_common_cjk_chars(limit=1000):
-    """Return all CJK characters from pre-generated vocabulary files without size limits"""
-    common_chars = []
+def get_common_cjk_chars(limit=None):
+    """Return CJK characters from pre-generated vocabulary files.
     
-    # Load Chinese, Japanese and Korean vocabulary from the vocabulary files
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-    vocab_files_dir = os.path.join(project_root, 'data/vocab_files')
+    Args:
+        limit: Optional limit on number of characters (ignored)
     
-    # List of languages to load
-    languages = ['chinese', 'japanese', 'korean']
+    Returns:
+        List of CJK characters
     
-    # Load all characters from each language vocab file
-    for language in languages:
-        vocab_file = os.path.join(vocab_files_dir, f'{language}_vocab.json')
-        lang_chars = []
-        
-        if os.path.exists(vocab_file):
-            try:
-                print(f"Loading all {language} characters from {vocab_file}")
-                with open(vocab_file, 'r', encoding='utf-8') as f:
-                    vocab_data = json.load(f)
-                    if 'vocabulary' in vocab_data:
-                        # Load all characters without any limit
-                        lang_chars = vocab_data['vocabulary']
-                print(f"Loaded {len(lang_chars)} {language} characters from file")
-            except Exception as e:
-                print(f"Error loading {language} vocabulary file: {e}")
-        else:
-            print(f"{language} vocabulary file not found at {vocab_file}")
-            
-            # Fallback for each language if file not found
-            if language == 'japanese':
-                # For Japanese, Hiragana and Katakana are essential
-                for char_range in [(0x3040, 0x309F), (0x30A0, 0x30FF)]:  # Hiragana, Katakana
-                    start, end = char_range
-                    for codepoint in range(start, end + 1):
-                        char = chr(codepoint)
-                        if char not in common_chars and char not in lang_chars:
-                            lang_chars.append(char)
-            elif language == 'korean':
-                try:
-                    if importlib.util.find_spec("hgtk") is None:
-                        print("Installing hgtk package for Korean character handling...")
-                        subprocess.check_call([sys.executable, "-m", "pip", "install", "hgtk"])
-                    
-                    import hgtk
-                    # Add basic Korean Hangul characters
-                    for char in list(hgtk.letter.CHO) + list(hgtk.letter.JOONG) + list(hgtk.letter.JONG):
-                        if char not in common_chars and char not in lang_chars:
-                            lang_chars.append(char)
-                except Exception as e:
-                    print(f"Could not use hgtk for Korean: {e}")
-                    # Add some common Korean Hangul syllables as fallback
-                    for codepoint in range(0xAC00, 0xAC00 + 500):  # Add a reasonable number as fallback
-                        char = chr(codepoint)
-                        if char not in common_chars and char not in lang_chars:
-                            lang_chars.append(char)
-            elif language == 'chinese':
-                # Fallback for Chinese - use common CJK Unified Ideographs
-                for codepoint in range(0x4E00, 0x4E00 + 2000):  # Add a reasonable number as fallback
-                    char = chr(codepoint)
-                    if char not in common_chars and char not in lang_chars:
-                        lang_chars.append(char)
-        
-        print(f"Added {len(lang_chars)} {language} characters")
-        common_chars.extend(lang_chars)
-    
-    # Remove duplicates but preserve order without limiting size
-    result = list(dict.fromkeys(common_chars))  # Use dict.fromkeys to preserve order while removing duplicates
-    print(f"Final CJK vocabulary size: {len(result)}")
-    return result
+    Raises:
+        FileNotFoundError: If the CJK vocabulary file doesn't exist
+    """
+    # Load directly from the cjk vocabulary file, no fallback
+    return load_vocab_from_file("cjk")
 
 def parse_top_chinese_chars(filepath, limit=1000):
     """Parse the top Chinese characters file and return the characters."""

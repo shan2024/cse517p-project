@@ -114,9 +114,11 @@ lines_per_lang_dict = {}
 
 # Set the number of lines for each language based on family
 for lang in langs:
-    # Double the lines for CJK languages
+    # Increase data for underperforming language families
     if lang_families.get(lang) == "cjk":
-        lines_per_lang_dict[lang] = DEFAULT_LINES * 2
+        lines_per_lang_dict[lang] = DEFAULT_LINES * 4  # Increase from 2x to 4x for CJK
+    elif lang_families.get(lang) == "cyrillic":
+        lines_per_lang_dict[lang] = DEFAULT_LINES * 2  # Double data for Cyrillic languages
     else:
         lines_per_lang_dict[lang] = DEFAULT_LINES
 
