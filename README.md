@@ -11,7 +11,17 @@ Run these commands only from the root of the repo
 ### To train
 
 ```sh
-python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --data_fraction 1
+# Train on all character sets
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --data_fraction 1 --time --charset "all"
+
+# Train on a specific character set
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "latin"
+
+# Train on multiple character sets
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "latin,devanagari"
+
+# Include English data with another script
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "devanagari,english"
 ```
 
 ### To Predict

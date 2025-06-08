@@ -201,79 +201,39 @@ LANGUAGE_NAMES = {
     "sa": "Sanskrit"
 }
 
-# Define linguistic families with character sets
-LINGUISTIC_FAMILIES = {
-    "Germanic": {
-        "languages": ["en", "de", "nl", "sv", "da", "no", "is", "af", "fy", "nds", "als", "bar", "frr", "vls"],
-        "character_set": "Latin"
+# Define character set groups with their languages
+CHARACTER_SET_GROUPS = {
+    "latin/romance": {
+        "description": "Latin-script Romance languages",
+        "languages": ["es", "fr", "it", "pt", "ca", "gl", "ro", "oc", "ast", "pms", "lmo", "an", "rm", "wa", "vec", "nap", "scn", "mwl"]
     },
-    "Romance": {
-        "languages": ["es", "fr", "it", "pt", "ro", "ca", "gl", "eu", "eo", "la", "oc", "ast", "pms", "lmo", "an", "ilo", "rm", "wa", "vec", "nap", "scn", "mwl", "pam", "bcl"],
-        "character_set": "Latin"
+    "latin/germanic": {
+        "description": "Latin-script Germanic languages",
+        "languages": ["en", "de", "nl", "sv", "da", "no", "is", "af", "fy", "nds", "als", "bar", "frr", "vls"]
     },
-    "Slavic": {
-        "languages": ["ru", "pl", "cs", "uk", "bg", "sk", "lt", "lv", "sl", "et", "sr", "mk", "be", "hr", "bs", "sh", "hsb", "dsb", "rue"],
-        "character_set": "Cyrillic/Latin"
+    "latin/other": {
+        "description": "Other Latin-script languages",
+        "languages": ["tl", "sw", "uz", "pl", "cs", "hu", "fi", "et", "id", "ms", "vi", "cy", "ga", "gd", "eo", "io", "ia", "sq", "eu", "mt", "yo", "gn", "qu", "nah"]
     },
-    "Sino-Tibetan": {
-        "languages": ["zh", "my", "bo", "wuu", "yue"],
-        "character_set": "Chinese/Tibetan"
+    "cyrillic": {
+        "description": "Cyrillic-script languages",
+        "languages": ["ru", "uk", "bg", "sr", "mk", "be", "kk", "ky", "tt", "ba", "cv", "sah", "kv", "mhr", "mrj", "myv"]
     },
-    "Japonic": {
-        "languages": ["ja"],
-        "character_set": "Hiragana/Katakana/Kanji"
+    "cjk": {
+        "description": "Chinese, Japanese, and Korean",
+        "languages": ["zh", "ja", "ko", "wuu", "yue"]
     },
-    "Koreanic": {
-        "languages": ["ko"],
-        "character_set": "Hangul"
+    "devanagari": {
+        "description": "Devanagari-script languages",
+        "languages": ["hi", "mr", "ne", "sa", "mai", "bh"]
     },
-    "Afroasiatic": {
-        "languages": ["ar", "he", "am", "arz"],
-        "character_set": "Arabic/Hebrew/Ethiopic"
+    "arabic": {
+        "description": "Arabic-script languages",
+        "languages": ["ar", "fa", "ur", "ps", "ug", "ku", "sd", "pnb", "mzn", "arz", "lrc"]
     },
-    "Turkic": {
-        "languages": ["tr", "az", "kk", "ky", "ug", "uz", "tt", "ba", "cv", "sah", "tk", "krc", "tyv", "xal"],
-        "character_set": "Cyrillic/Latin"
-    },
-    "Indo-Iranian": {
-        "languages": ["fa", "hi", "bn", "ta", "ur", "ne", "mr", "ml", "te", "kn", "gu", "si", "pa", "ps", "ku", "sd", "or", "as", "dv", "pnb", "mzn", "lez", "lrc", "bh", "mai"],
-        "character_set": "Arabic/Devanagari/Various"
-    },
-    "Uralic": {
-        "languages": ["hu", "fi", "et", "kv", "mhr", "mrj", "myv"],
-        "character_set": "Cyrillic/Latin"
-    },
-    "Austronesian": {
-        "languages": ["id", "tl", "ms", "jv", "su", "ceb", "war", "min", "mg"],
-        "character_set": "Latin"
-    },
-    "Kartvelian": {
-        "languages": ["ka", "xmf"],
-        "character_set": "Georgian"
-    },
-    "Mongolic": {
-        "languages": ["mn", "bxr"],
-        "character_set": "Cyrillic/Mongolian"
-    },
-    "Tai-Kadai": {
-        "languages": ["th", "lo"],
-        "character_set": "Thai/Lao"
-    },
-    "Austro-Asiatic": {
-        "languages": ["vi", "km"],
-        "character_set": "Latin/Khmer"
-    },
-    "Celtic": {
-        "languages": ["cy", "ga", "gd", "br", "kw"],
-        "character_set": "Latin"
-    },
-    "Constructed": {
-        "languages": ["eo", "vo", "jbo", "io", "ia", "ie"],
-        "character_set": "Latin"
-    },
-    "Other": {
-        "languages": ["sq", "hy", "eu", "yi", "mt", "sw", "so", "yo", "gn", "qu", "nah", "sa"],
-        "character_set": "Various"
+    "other": {
+        "description": "Other script languages",
+        "languages": ["he", "bn", "ta", "ml", "te", "kn", "gu", "si", "pa", "or", "as", "dv", "th", "lo", "km", "ka", "hy", "am", "bo", "yi", "mn"]
     }
 }
 
@@ -283,27 +243,28 @@ def get_language_name(lang_code):
         return "Combined"
     return LANGUAGE_NAMES.get(lang_code, lang_code)
 
-def get_language_family(lang_code):
-    """Return the linguistic family and character set for a given language code."""
-    for family, info in LINGUISTIC_FAMILIES.items():
+def get_language_charset(lang_code):
+    """Return the character set group for a given language code."""
+    if lang_code == "Combined":
+        return "mixed"
+        
+    for charset, info in CHARACTER_SET_GROUPS.items():
         if lang_code in info["languages"]:
-            return family, info["character_set"]
-    return "Unknown", "Unknown"
+            return charset
+    return "unknown"
 
 def calculate_averages(results):
-    """Calculate average accuracies by family and character set."""
-    family_averages = {}
-    charset_data = {}
+    """Calculate average accuracies by character set."""
+    charset_averages = {}
     
-    for family, family_data in results.items():
-        if family == "Combined":
+    for charset, charset_data in results.items():
+        if charset == "Combined":
             continue
             
-        char_set = family_data["character_set"]
         top1_scores = []
         top3_scores = []
         
-        for lang_result in family_data["languages"]:
+        for lang_result in charset_data["languages"]:
             # Skip error results
             if lang_result[1] != "Error" and lang_result[2] != "Error":
                 try:
@@ -315,34 +276,13 @@ def calculate_averages(results):
                     continue
         
         if top1_scores and top3_scores:
-            family_avg_top1 = sum(top1_scores) / len(top1_scores)
-            family_avg_top3 = sum(top3_scores) / len(top3_scores)
-            family_averages[family] = {
-                "top1": family_avg_top1,
-                "top3": family_avg_top3,
-                "char_set": char_set,
+            charset_averages[charset] = {
+                "top1": sum(top1_scores) / len(top1_scores),
+                "top3": sum(top3_scores) / len(top3_scores),
                 "count": len(top1_scores)
             }
-            
-            # Aggregate by character set
-            if char_set not in charset_data:
-                charset_data[char_set] = {"top1_scores": [], "top3_scores": [], "families": []}
-            charset_data[char_set]["top1_scores"].extend(top1_scores)
-            charset_data[char_set]["top3_scores"].extend(top3_scores)
-            charset_data[char_set]["families"].append(family)
     
-    # Calculate character set averages
-    charset_averages = {}
-    for char_set, data in charset_data.items():
-        if data["top1_scores"] and data["top3_scores"]:
-            charset_averages[char_set] = {
-                "top1": sum(data["top1_scores"]) / len(data["top1_scores"]),
-                "top3": sum(data["top3_scores"]) / len(data["top3_scores"]),
-                "families": list(set(data["families"])),
-                "count": len(data["top1_scores"])
-            }
-    
-    return family_averages, charset_averages
+    return charset_averages
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate model accuracy by language")
@@ -361,7 +301,7 @@ def main():
         if os.path.isdir(full_path):
             test_dirs[item] = full_path
     
-    results = {}  # Group results by family
+    results = {}  # Group results by character set
     
     # Set up device and model once to reuse
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -379,10 +319,11 @@ def main():
         language_name = get_language_name(language)
         print(f"\n===== Evaluating {language_name} ({language}) =====")
         
-        # Get family and character set info
-        family, char_set = get_language_family(language)
+        # Get character set info
+        charset = get_language_charset(language)
+        charset_desc = CHARACTER_SET_GROUPS.get(charset, {}).get("description", "Unknown character set")
         if language == "Combined":
-            family, char_set = "Combined", "Mixed"
+            charset, charset_desc = "mixed", "Mixed character sets"
         
         try:
             # Step 1: Generate predictions directly
@@ -425,14 +366,14 @@ def main():
             top1_pct = top1_acc * 100
             top3_pct = top3_acc * 100
             
-            # Initialize family group if not exists
-            if family not in results:
-                results[family] = {
-                    "character_set": char_set,
+            # Initialize charset group if not exists
+            if charset not in results:
+                results[charset] = {
+                    "description": charset_desc,
                     "languages": []
                 }
-            # Store results grouped by family with full language name
-            results[family]["languages"].append([
+            # Store results grouped by charset with full language name
+            results[charset]["languages"].append([
                 f"{language_name} ({language})", 
                 f"{top1_pct:.2f}%", 
                 f"{top3_pct:.2f}%", 
@@ -442,7 +383,7 @@ def main():
             ])
             
             # Print results
-            print(f"Family: {family} ({char_set})")
+            print(f"Character Set: {charset} ({charset_desc})")
             print(f"Top-1 Accuracy: {top1_acc:.2%}")
             print(f"Top-3 Accuracy: {top3_acc:.2%}")
             print(f"Number of examples: {num_examples}")
@@ -450,29 +391,29 @@ def main():
             
         except Exception as e:
             print(f"Error during evaluation for {language_name} ({language}): {e}")
-            if family not in results:
-                results[family] = {
-                    "character_set": char_set,
+            if charset not in results:
+                results[charset] = {
+                    "description": charset_desc,
                     "languages": []
                 }
-            results[family]["languages"].append([f"{language_name} ({language})", "Error", "Error", "Error", "Error", "Error"])
+            results[charset]["languages"].append([f"{language_name} ({language})", "Error", "Error", "Error", "Error", "Error"])
 
-    # Print summary table grouped by family
+    # Print summary table grouped by character set
     if results:
-        print("\n===== SUMMARY BY LINGUISTIC FAMILY =====")
+        print("\n===== SUMMARY BY CHARACTER SET =====")
         
         # Calculate averages
-        family_averages, charset_averages = calculate_averages(results)
+        charset_averages = calculate_averages(results)
         
-        # Sort families for consistent output
-        for family in sorted(results.keys()):
-            family_data = results[family]
-            print(f"\n{family} Family (Character Set: {family_data['character_set']})")
-            print("=" * (len(family) + len(family_data['character_set']) + 25))
+        # Sort character sets for consistent output
+        for charset in sorted(results.keys()):
+            charset_data = results[charset]
+            print(f"\n{charset} ({charset_data['description']})")
+            print("=" * (len(charset) + len(charset_data['description']) + 3))
             
-            if family_data["languages"]:
+            if charset_data["languages"]:
                 # Sort languages by top-3 accuracy (low to high)
-                sorted_languages = sorted(family_data["languages"], 
+                sorted_languages = sorted(charset_data["languages"], 
                                          key=lambda x: float(x[2].replace('%', '')) if x[2] != "Error" else -1)
                 
                 print(tabulate(sorted_languages, headers=[
@@ -484,54 +425,33 @@ def main():
                     "ms/prediction"
                 ], tablefmt="grid"))
                 
-                # Show family average if available
-                if family in family_averages:
-                    avg_data = family_averages[family]
-                    print(f"\nFamily Average (n={avg_data['count']}): Top-1: {avg_data['top1']:.2f}%, Top-3: {avg_data['top3']:.2f}%")
+                # Show charset average if available
+                if charset in charset_averages:
+                    avg_data = charset_averages[charset]
+                    print(f"\nCharacter Set Average (n={avg_data['count']}): Top-1: {avg_data['top1']:.2f}%, Top-3: {avg_data['top3']:.2f}%")
             else:
-                print("No languages evaluated in this family.")
-        
-        # Print family averages summary
-        if family_averages:
-            print("\n===== FAMILY AVERAGES SUMMARY =====")
-            family_summary = []
-            for family, avg_data in sorted(family_averages.items()):
-                family_summary.append([
-                    family,
-                    avg_data['char_set'],
-                    f"{avg_data['top1']:.2f}%",
-                    f"{avg_data['top3']:.2f}%",
-                    avg_data['count']
-                ])
-            
-            print(tabulate(family_summary, headers=[
-                "Family", 
-                "Character Set", 
-                "Avg Top-1", 
-                "Avg Top-3", 
-                "Languages Tested"
-            ], tablefmt="grid"))
+                print("No languages evaluated in this character set.")
         
         # Print character set averages summary
         if charset_averages:
             print("\n===== CHARACTER SET AVERAGES SUMMARY =====")
             charset_summary = []
-            for char_set, avg_data in sorted(charset_averages.items()):
-                families_str = ", ".join(sorted(avg_data['families']))
+            for charset, avg_data in sorted(charset_averages.items()):
+                description = results[charset]["description"]
                 charset_summary.append([
-                    char_set,
+                    charset,
+                    description,
                     f"{avg_data['top1']:.2f}%",
                     f"{avg_data['top3']:.2f}%",
-                    avg_data['count'],
-                    families_str
+                    avg_data['count']
                 ])
             
             print(tabulate(charset_summary, headers=[
                 "Character Set", 
+                "Description",
                 "Avg Top-1", 
                 "Avg Top-3", 
-                "Languages Tested",
-                "Families"
+                "Languages Tested"
             ], tablefmt="grid"))
     else:
         print("\nNo results were generated.")

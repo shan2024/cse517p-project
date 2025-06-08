@@ -3,6 +3,13 @@ import pandas as pd
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from helpers import DatasetFileLoader
+# Import language family mapping from prepare_multilingual_dataset.py
+from prepare_multilingual_dataset import lang_families
+
+# Function to get the language family path for a given language code
+def get_language_family_path(lang_code):
+    """Return the language family subdirectory for a given language code"""
+    return lang_families.get(lang_code, "other")
 
 def to_sample_and_expected_result(data, min_input_size = 3, max_input_size=300):
     """
@@ -72,28 +79,53 @@ def write_test_data(test_data_dir, x_test, y_test):
 def discover_test_files(data_directory):
     """
     Discover test files automatically based on naming convention.
-    Returns a dictionary mapping language codes to their test files.
+    Returns a dictionary mapping language codes to their test files with full paths.
     """
     test_files = {}
     
-    # Get all CSV files in the data directory
+    # Get all CSV files in the data directory and its subdirectories
     if not os.path.exists(data_directory):
         print(f"Warning: Data directory {data_directory} does not exist.")
         return test_files
     
+    # First check for English test files in the root data directory
     for filename in os.listdir(data_directory):
-        if filename.startswith('test_') and filename.endswith('.csv'):
-            if filename.startswith('test_culturax_'):
-                # Extract language code from test_culturax_XX.csv
-                lang_code = filename.replace('test_culturax_', '').replace('.csv', '')
-                if lang_code not in test_files:
-                    test_files[lang_code] = []
-                test_files[lang_code].append(filename)
-            elif filename in ['test_nasa.csv', 'test_trek.csv']:
-                # Handle English test files
-                if 'en' not in test_files:
-                    test_files['en'] = []
-                test_files['en'].append(filename)
+        if filename in ['test_nasa.csv', 'test_trek.csv']:
+            # Handle English test files
+            if 'en' not in test_files:
+                test_files['en'] = []
+            test_files['en'].append(os.path.join(data_directory, filename))
+    
+    # Now search in language family subdirectories
+    for family_dir in os.listdir(data_directory):
+        family_path = os.path.join(data_directory, family_dir)
+        
+        # Skip if not a directory
+        if not os.path.isdir(family_path):
+            continue
+            
+        # If family_dir is itself a directory with subdirectories (like latin)
+        if family_dir in ["latin"]:
+            for subfolder in os.listdir(family_path):
+                subfamily_path = os.path.join(family_path, subfolder)
+                if os.path.isdir(subfamily_path):
+                    for filename in os.listdir(subfamily_path):
+                        if filename.startswith('test_culturax_') and filename.endswith('.csv'):
+                            # Extract language code from test_culturax_XX.csv
+                            lang_code = filename.replace('test_culturax_', '').replace('.csv', '')
+                            if lang_code not in test_files:
+                                test_files[lang_code] = []
+                            test_files[lang_code].append(os.path.join(subfamily_path, filename))
+        
+        # For other family directories
+        else:
+            for filename in os.listdir(family_path):
+                if filename.startswith('test_culturax_') and filename.endswith('.csv'):
+                    # Extract language code from test_culturax_XX.csv
+                    lang_code = filename.replace('test_culturax_', '').replace('.csv', '')
+                    if lang_code not in test_files:
+                        test_files[lang_code] = []
+                    test_files[lang_code].append(os.path.join(family_path, filename))
     
     return test_files
 
@@ -128,9 +160,7 @@ if __name__ == '__main__':
         all_y_test = []
         
         # Load and process each CSV file for the language
-        for csv_file in csv_files:
-            file_path = os.path.join(args.data_directory, csv_file)
-            
+        for file_path in csv_files:
             # Skip if file doesn't exist
             if not os.path.exists(file_path):
                 print(f"Warning: {file_path} does not exist. Skipping...")
@@ -144,7 +174,7 @@ if __name__ == '__main__':
             
             all_x_test.extend(x_test)
             all_y_test.extend(y_test)
-            print(f"  Added {len(x_test)} test samples from {csv_file}")
+            print(f"  Added {len(x_test)} test samples from {os.path.basename(file_path)}")
         
         # Write the combined test data for this language
         if all_x_test:
@@ -154,9 +184,13 @@ if __name__ == '__main__':
             print(f"  No test samples generated for {lang_code}")
         
     # Also process the combined test data as before
-    x_test, y_test = to_sample_and_expected_result(loader.test_data[0])
-    write_test_data(args.test_data, x_test, y_test)
-    print(f"Wrote {len(x_test)} test samples for combined data")
-
-
-
+    # Since loader.load was called with the data directory, it should have already loaded
+    # all test files from their respective language family subdirectories
+    combined_test_data = loader.test_data[0] if not loader.test_data.empty else []
+    
+    if not loader.test_data.empty:
+        x_test, y_test = to_sample_and_expected_result(combined_test_data)
+        write_test_data(args.test_data, x_test, y_test)
+        print(f"Wrote {len(x_test)} test samples for combined data")
+    else:
+        print("No combined test data available")

@@ -61,17 +61,82 @@ langs = [
     "ku",  # Kurdish (Sorani dialect uses Arabic script) – ~30–35 million speakers (out of ~40M total Kurds)
 ]
 
-lines_per_lang = 10000 # Number of lines to sample per language (or maximum available)
+# Define language family mapping
+lang_families = {
+    # Latin charset languages
+    # Romance languages
+    "es": "latin/romance",  # Spanish
+    "fr": "latin/romance",  # French
+    "it": "latin/romance",  # Italian
+    "pt": "latin/romance",  # Portuguese
+    
+    # Germanic languages
+    "de": "latin/germanic",  # German
+    "nl": "latin/germanic",  # Dutch
+    "sv": "latin/germanic",  # Swedish
+    "no": "latin/germanic",  # Norwegian
+    
+    # Other Latin charset languages
+    "tl": "latin/other",  # Filipino
+    "sw": "latin/other",  # Swahili
+    "uz": "latin/other",  # Uzbek
+    
+    # Cyrillic languages
+    "ru": "cyrillic",  # Russian
+    "uk": "cyrillic",  # Ukrainian
+    "bg": "cyrillic",  # Bulgarian
+    "sr": "cyrillic",  # Serbian
+    "mk": "cyrillic",  # Macedonian
+    "be": "cyrillic",  # Belarusian
+    
+    # CJK languages
+    "zh": "cjk",  # Chinese
+    "ja": "cjk",  # Japanese
+    "ko": "cjk",  # Korean
+    
+    # Devanagari languages
+    "hi": "devanagari",  # Hindi
+    "mr": "devanagari",  # Marathi
+    "ne": "devanagari",  # Nepali
+    
+    # Arabic script languages
+    "ar": "arabic",  # Arabic
+    "fa": "arabic",  # Persian (Farsi)
+    "ur": "arabic",  # Urdu
+    "ps": "arabic",  # Pashto
+    "ug": "arabic",  # Uyghur
+    "ku": "arabic",  # Kurdish (Sorani)
+}
+
+# Define number of lines per language, doubling for CJK languages
+DEFAULT_LINES = 10000
+lines_per_lang_dict = {}
+
+# Set the number of lines for each language based on family
+for lang in langs:
+    # Double the lines for CJK languages
+    if lang_families.get(lang) == "cjk":
+        lines_per_lang_dict[lang] = DEFAULT_LINES * 2
+    else:
+        lines_per_lang_dict[lang] = DEFAULT_LINES
+
 output_dir = "data/parsed_data"
 
 # Check to ensure output directory exists
 os.makedirs(output_dir, exist_ok=True)
 
+# Create subdirectories for each language family
+for family in set(lang_families.values()):
+    family_dir = os.path.join(output_dir, family)
+    os.makedirs(family_dir, exist_ok=True)
+
 # Function to check if all split files exist for a language
 def files_exist_for_language(lang):
     """Check if train, dev, and test files already exist for a language"""
+    family = lang_families.get(lang, "other")
+    family_dir = os.path.join(output_dir, family)
     for split in ["train", "dev", "test"]:
-        filename = os.path.join(output_dir, f"{split}_culturax_{lang}.csv")
+        filename = os.path.join(family_dir, f"{split}_culturax_{lang}.csv")
         if not os.path.exists(filename):
             return False
     return True
@@ -95,8 +160,11 @@ for lang in langs_to_process:
     lang_split_writers[lang] = {}
     lang_split_files[lang] = {}
     
+    family = lang_families.get(lang, "other")
+    family_dir = os.path.join(output_dir, family)
+    
     for split in ["train", "dev", "test"]:
-        filename = os.path.join(output_dir, f"{split}_culturax_{lang}.csv")
+        filename = os.path.join(family_dir, f"{split}_culturax_{lang}.csv")
         f = open(filename, "w", encoding="utf-8", newline="")
         writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer.writerow(["dialogue"])
@@ -112,28 +180,31 @@ try:
         stream = dataset["train"]
         
         count = 0
+        lines_for_lang = lines_per_lang_dict[lang]
         for example in stream:
             text = example.get("text", "").strip()
             if text:
                 text = text.replace("\n", " ")
-                if count < int(lines_per_lang * 0.8):
+                if count < int(lines_for_lang * 0.8):
                     lang_split_writers[lang]["train"].writerow([text])
-                elif count < int(lines_per_lang * 0.9):
+                elif count < int(lines_for_lang * 0.9):
                     lang_split_writers[lang]["dev"].writerow([text])
-                elif count < lines_per_lang:
+                elif count < lines_for_lang:
                     lang_split_writers[lang]["test"].writerow([text])
                 else:
                     break
                 count += 1
 
-        print(f"Collected {count} lines for {lang} (requested: {lines_per_lang})")
-        if count < lines_per_lang:
-            print(f"Warning: Only {count} lines available for {lang}, less than requested {lines_per_lang}")
+        print(f"Collected {count} lines for {lang} (requested: {lines_for_lang})")
+        if count < lines_for_lang:
+            print(f"Warning: Only {count} lines available for {lang}, less than requested {lines_for_lang}")
 
     print("Language-specific train/dev/test files created and saved:")
     for lang in langs_to_process:
+        family = lang_families.get(lang, "other")
+        family_dir = os.path.join(output_dir, family)
         for split in ["train", "dev", "test"]:
-            filename = os.path.join(output_dir, f"{split}_culturax_{lang}.csv")
+            filename = os.path.join(family_dir, f"{split}_culturax_{lang}.csv")
             print(f" - {lang} {split}: {filename}")
 
 except Exception as e:
