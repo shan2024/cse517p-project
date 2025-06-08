@@ -47,7 +47,7 @@ def build_vocab(charset="all"):
         if cs == "arabic" or cs == "all":
             print("Adding Arabic script characters")
             all_chars.update(arabic_vocab())
-            
+        
         if cs == "devanagari" or cs == "all":
             print("Adding Devanagari script characters")
             all_chars.update(devanagari_vocab())
