@@ -1,11 +1,6 @@
 import string
 import json
-import collections
 import os
-import importlib.util
-import subprocess
-import sys
-from .arabic_devanagari_support import arabic_vocab, devanagari_vocab
 
 CONTROL_CHARS = ['\t', '\n', '\r', '\v', '\f']
 
@@ -22,6 +17,8 @@ def load_vocab_from_file(script_group):
         FileNotFoundError: If the vocabulary file doesn't exist
         ValueError: If the vocabulary file doesn't contain a valid vocabulary
     """
+    
+    #TODO: Pass this in instead of determining here
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
     vocab_files_dir = os.path.join(project_root, 'data/vocab_files')
     
@@ -49,7 +46,7 @@ def build_vocab(charset="all"):
     
     Args:
         charset: Base character set to include. Can be:
-                - A single charset name: 'latin', 'cyrillic', 'cjk', 'arabic', 'devanagari', or 'all'
+                - A single charset name: 'latin', 'cyrillic', 'cjk', 'arabic', 'devanagari', 'hebrew', or 'all'
                 - A list of charset names: ['latin', 'devanagari']
     
     Returns:
@@ -68,6 +65,8 @@ def build_vocab(charset="all"):
         charsets = charset
     
     for cs in charsets:
+        #TODO: It turns out it's almost always better to just include all characters in the vocab
+        # We might want to delete the flags per language but keeping them for now in case we need them later
         if cs == "latin" or cs == "all":
             print("Adding Latin characters")
             # For Latin, keep the manually defined character sets
@@ -82,57 +81,29 @@ def build_vocab(charset="all"):
         if cs == "cjk" or cs == "all":
             print("Adding CJK characters")
             # The get_common_cjk_chars function now loads from vocab files
-            all_chars.update(get_common_cjk_chars())
+            all_chars.update(load_vocab_from_file("cjk"))
         
         if cs == "arabic" or cs == "all":
             print("Adding Arabic script characters")
             # Load from vocab file via the arabic_vocab function
-            all_chars.update(arabic_vocab())
+            all_chars.update(load_vocab_from_file('arabic'))
         
         if cs == "devanagari" or cs == "all":
             print("Adding Devanagari script characters")
             # Load from vocab file via the devanagari_vocab function
-            all_chars.update(devanagari_vocab())
+            all_chars.update(load_vocab_from_file('devanagari'))
+            
+        if cs == "hebrew" or cs == "all":
+            print("Adding Hebrew script characters")
+            all_chars.update(load_vocab_from_file("hebrew"))
+    
+    all_chars = list(set(all_chars)) #Remove duplicates
     
     # Create the mappings
     char_to_index = {char: idx for idx, char in enumerate(sorted(all_chars))}
     
     print(f"Created vocabulary with {len(char_to_index)} characters")
     return char_to_index
-
-def get_common_cjk_chars(limit=None):
-    """Return CJK characters from pre-generated vocabulary files.
-    
-    Args:
-        limit: Optional limit on number of characters (ignored)
-    
-    Returns:
-        List of CJK characters
-    
-    Raises:
-        FileNotFoundError: If the CJK vocabulary file doesn't exist
-    """
-    # Load directly from the cjk vocabulary file, no fallback
-    return load_vocab_from_file("cjk")
-
-def parse_top_chinese_chars(filepath, limit=1000):
-    """Parse the top Chinese characters file and return the characters."""
-    chars = []
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            for line in f:
-                parts = line.strip().split('\t')
-                if len(parts) >= 2:
-                    # The character should be in the second column
-                    char = parts[1]
-                    if len(char) == 1 and char.isprintable():
-                        chars.append(char)
-                        if len(chars) >= limit:
-                            break
-    except Exception as e:
-        print(f"Error parsing top Chinese characters file: {e}")
-    
-    return chars
 
 def init_vocab(vocab_file_path, charset="all"):
     """Create a new vocab and write it to the provided folder"""
@@ -143,12 +114,6 @@ def init_vocab(vocab_file_path, charset="all"):
             json.dump(vocab, f, ensure_ascii=False, indent=2)
             
     return vocab
-
-
-def get_common_cyrillic_chars():
-    """Return the most common Cyrillic script characters"""
-    # Russian and Ukrainian are the most widely used Cyrillic scripts
-    return russian_vocab() + ukrainian_vocab()
 
 
 # Define script specific charsets
@@ -166,39 +131,6 @@ def build_latin_charset():
                         uzbek_vocab())
     
     return set(all_special_chars)
-
-
-def build_cyrillic_charset():
-    
-    # Combine all Cyrillic language-specific characters
-    all_cyrillic_chars = (russian_vocab() + ukrainian_vocab() + 
-                         bulgarian_vocab() + serbian_vocab() +
-                         macedonian_vocab() + belarusian_vocab())
-    
-    
-    return set(all_cyrillic_chars)
-
-def build_cjk_charset():
-    # Core blocks containing the most common and printable CJK characters
-    cjk_ranges = [
-        (0x4E00, 0x9FFF),   # CJK Unified Ideographs
-        (0x3400, 0x4DBF),   # CJK Extension A (fairly common)
-        (0x3040, 0x309F),   # Hiragana
-        (0x30A0, 0x30FF),   # Katakana
-        (0x31F0, 0x31FF),   # Katakana Phonetic Extensions
-        (0xAC00, 0xD7AF),   # Hangul Syllables
-        (0x1100, 0x11FF),   # Hangul Jamo (basic components)
-        (0x3130, 0x318F),   # Hangul Compatibility Jamo
-    ]
-
-    charset = set()
-    for start, end in cjk_ranges:
-        for codepoint in range(start, end + 1):
-            ch = chr(codepoint)
-            if ch.isprintable():
-                charset.add(ch)
-
-    return charset
 
 
 # Define charsets for latin char languages

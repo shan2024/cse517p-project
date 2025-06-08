@@ -1,15 +1,22 @@
 import os
+import sys
 import pandas as pd
 import random
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+# Add the parent directory (src) to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Now we can import helpers and other modules
 from helpers import DatasetFileLoader
-# Import language family mapping from prepare_multilingual_dataset.py
-from prepare_multilingual_dataset import lang_families
+from src.language_consts import LANGUAGES
 
 # Function to get the language family path for a given language code
 def get_language_family_path(lang_code):
-    """Return the language family subdirectory for a given language code"""
-    return lang_families.get(lang_code, "other")
+    """Return the script subdirectory for a given language code"""
+    if lang_code in LANGUAGES:
+        return LANGUAGES[lang_code].get("script", "other")
+    return "other"
 
 def to_sample_and_expected_result(data, min_input_size = 3, max_input_size=300):
     """
@@ -96,18 +103,18 @@ def discover_test_files(data_directory):
                 test_files['en'] = []
             test_files['en'].append(os.path.join(data_directory, filename))
     
-    # Now search in language family subdirectories
-    for family_dir in os.listdir(data_directory):
-        family_path = os.path.join(data_directory, family_dir)
+    # Now search in script subdirectories
+    for script_dir in os.listdir(data_directory):
+        script_path = os.path.join(data_directory, script_dir)
         
         # Skip if not a directory
-        if not os.path.isdir(family_path):
+        if not os.path.isdir(script_path):
             continue
             
-        # If family_dir is itself a directory with subdirectories (like latin)
-        if family_dir in ["latin"]:
-            for subfolder in os.listdir(family_path):
-                subfamily_path = os.path.join(family_path, subfolder)
+        # If script_dir is itself a directory with subdirectories (like latin)
+        if script_dir in ["latin"]:
+            for subfolder in os.listdir(script_path):
+                subfamily_path = os.path.join(script_path, subfolder)
                 if os.path.isdir(subfamily_path):
                     for filename in os.listdir(subfamily_path):
                         if filename.startswith('test_culturax_') and filename.endswith('.csv'):
@@ -117,23 +124,26 @@ def discover_test_files(data_directory):
                                 test_files[lang_code] = []
                             test_files[lang_code].append(os.path.join(subfamily_path, filename))
         
-        # For other family directories
+        # For other script directories
         else:
-            for filename in os.listdir(family_path):
+            for filename in os.listdir(script_path):
                 if filename.startswith('test_culturax_') and filename.endswith('.csv'):
                     # Extract language code from test_culturax_XX.csv
                     lang_code = filename.replace('test_culturax_', '').replace('.csv', '')
                     if lang_code not in test_files:
                         test_files[lang_code] = []
-                    test_files[lang_code].append(os.path.join(family_path, filename))
+                    test_files[lang_code].append(os.path.join(script_path, filename))
     
     return test_files
 
 if __name__ == '__main__':
+    print("YOU ARE HERE")
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data_directory', help='Directory containing clean data', default='data/parsed_data')
     parser.add_argument('--test_data', help='path to write test data', default='test/')
     args = parser.parse_args()
+    
+    print("HERE")
 
     # Load combined data
     loader = DatasetFileLoader()
