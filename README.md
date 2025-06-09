@@ -8,6 +8,26 @@ For illustration purposes, this repo contains a dummy program that simply genera
 
 Run these commands only from the root of the repo
 
+### To setup and pull data
+
+Download datasets for all languages:
+
+```sh
+python ./src/data_parsing/prepare_multilingual_dataset.py
+```
+
+Set up test data folders:
+
+```sh
+python src/data_parsing/prepare_test_data.py --data_directory data/parsed_data --test_data cse517p-project/test
+```
+
+Add new vocab files (only needed when adding a new character type)
+
+```sh
+python src/data_parsing/parse_vocab_by_script.py --threshold 99
+```
+
 ### To train
 
 ```sh
