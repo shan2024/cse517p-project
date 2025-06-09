@@ -46,7 +46,8 @@ def build_vocab(charset="all"):
     
     Args:
         charset: Base character set to include. Can be:
-                - A single charset name: 'latin', 'cyrillic', 'cjk', 'arabic', 'devanagari', 'hebrew', or 'all'
+                - A single charset name: 'latin', 'cyrillic', 'cjk', 'arabic', 'devanagari', 
+                  'hebrew', 'greek', 'bengali', 'thai', or 'all'
                 - A list of charset names: ['latin', 'devanagari']
     
     Returns:
@@ -96,6 +97,18 @@ def build_vocab(charset="all"):
         if cs == "hebrew" or cs == "all":
             print("Adding Hebrew script characters")
             all_chars.update(load_vocab_from_file("hebrew"))
+            
+        if cs == "greek" or cs == "all":
+            print("Adding Greek script characters")
+            all_chars.update(load_vocab_from_file("greek"))
+            
+        if cs == "bengali" or cs == "all":
+            print("Adding Bengali script characters")
+            all_chars.update(load_vocab_from_file("bengali"))
+            
+        if cs == "thai" or cs == "all":
+            print("Adding Thai script characters")
+            all_chars.update(load_vocab_from_file("thai"))
     
     all_chars = list(set(all_chars)) #Remove duplicates
     

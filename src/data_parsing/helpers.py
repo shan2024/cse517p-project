@@ -39,26 +39,30 @@ def load_predicted(test_dir):
 
 # Map from character set names to directory paths
 character_sets = {
-    "latin": ["latin/romance", "latin/germanic", "latin/other"],
-    "romance": ["latin/romance"],
-    "germanic": ["latin/germanic"],
+    "latin": ["latin"],  # Updated - Latin no longer has subdirectories
     "english": ["english"],  # Special marker for English files
     "cyrillic": ["cyrillic"],
     "cjk": ["cjk"],
     "devanagari": ["devanagari"],
     "arabic": ["arabic"],
+    "hebrew": ["hebrew"],
+    "greek": ["greek"],
+    "bengali": ["bengali"],
+    "thai": ["thai"],
     "all": None  # None means include all
 }
 
 # Reverse mapping from language family paths to character set names
 family_to_charset = {
-    "latin/romance": "latin",
-    "latin/germanic": "latin",
-    "latin/other": "latin",
+    "latin": "latin",  # Updated for flat structure
     "cyrillic": "cyrillic",
     "cjk": "cjk",
     "devanagari": "devanagari",
-    "arabic": "arabic"
+    "arabic": "arabic",
+    "hebrew": "hebrew",
+    "greek": "greek",
+    "bengali": "bengali",
+    "thai": "thai"
 }
 
 class DatasetFileLoader():
@@ -161,9 +165,9 @@ class DatasetFileLoader():
                 
     def _load_english_files(self, data_directory, fraction):
         """Load specifically NASA and Star Trek files which are in English"""
-        germanic_dir = os.path.join(data_directory, "latin/germanic")
-        if not os.path.exists(germanic_dir):
-            print(f"Warning: English files directory {germanic_dir} not found")
+        latin_dir = os.path.join(data_directory, "latin")  # Updated path
+        if not os.path.exists(latin_dir):
+            print(f"Warning: English files directory {latin_dir} not found")
             return
             
         english_files = [
@@ -173,7 +177,7 @@ class DatasetFileLoader():
         ]
         
         for file_name in english_files:
-            file_path = os.path.join(germanic_dir, file_name)
+            file_path = os.path.join(latin_dir, file_name)  # Updated path
             if not os.path.exists(file_path):
                 print(f"Warning: English file {file_path} not found")
                 continue

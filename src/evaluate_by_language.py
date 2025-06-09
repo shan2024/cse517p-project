@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import time
 import torch
 from tabulate import tabulate
 
@@ -14,24 +15,21 @@ from helpers import load_true, load_predicted, get_top1_accuracy, get_top3_accur
 # Import model wrapper directly
 from Transformer_Based.transformer_wrapper import TransformerModelWrapper
 # Import language constants
-from language_consts import LANGUAGE_NAMES, CHARACTER_SET_GROUPS
-import time
+from language_consts import CHARACTER_SET_GROUPS, LANGUAGES
 
 def get_language_name(lang_code):
     """Return the full language name for a given language code."""
     if lang_code == "Combined":
         return "Combined"
-    return LANGUAGE_NAMES.get(lang_code, lang_code)
+    return LANGUAGES.get(lang_code, {}).get("name", lang_code)
 
 def get_language_charset(lang_code):
     """Return the character set group for a given language code."""
     if lang_code == "Combined":
         return "mixed"
         
-    for charset, info in CHARACTER_SET_GROUPS.items():
-        if lang_code in info["languages"]:
-            return charset
-    return "unknown"
+    # Get script directly from LANGUAGES
+    return LANGUAGES.get(lang_code, {}).get("script", "unknown")
 
 def calculate_averages(results):
     """Calculate average accuracies by character set."""
@@ -101,7 +99,13 @@ def main():
         
         # Get character set info
         charset = get_language_charset(language)
-        charset_desc = CHARACTER_SET_GROUPS.get(charset, {}).get("description", "Unknown character set")
+        
+        # Get charset description from CHARACTER_SET_GROUPS or from the script name
+        if charset in CHARACTER_SET_GROUPS:
+            charset_desc = CHARACTER_SET_GROUPS.get(charset, {}).get("description", "Unknown character set")
+        else:
+            charset_desc = f"{charset.capitalize()} script"
+            
         if language == "Combined":
             charset, charset_desc = "mixed", "Mixed character sets"
         
