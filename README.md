@@ -4,6 +4,61 @@ This repo contains an example submission for the CSE517P project.
 For this project, you will develop a program that takes in a string of character and tries to predict the next character.
 For illustration purposes, this repo contains a dummy program that simply generates 3 random guesses of the next character.
 
+## To Run
+
+Run these commands only from the root of the repo
+
+### To setup and pull data
+
+Download datasets for all languages:
+
+```sh
+python ./src/data_parsing/prepare_multilingual_dataset.py
+```
+
+Set up test data folders:
+
+```sh
+python src/data_parsing/prepare_test_data.py --data_directory data/parsed_data --test_data cse517p-project/test
+```
+
+Add new vocab files (only needed when adding a new character type)
+
+```sh
+python src/data_parsing/parse_vocab_by_script.py --threshold 99
+```
+
+### To train
+
+```sh
+# Train on all character sets
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --data_fraction 1 --time --charset "all"
+
+# Train on a specific character set
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "latin"
+
+# Train on multiple character sets
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "latin,devanagari"
+
+# Include English data with another script
+python ./src/train.py --work_dir ./work --data_dir ./data/parsed_data --charset "devanagari,english"
+```
+
+### To Predict
+
+This command will run predict.py using the input file passed by `--test_data` and will write the output to `--test_output`.
+
+```sh
+python ./src/predict.py --work_dir ./work --test_data ./test/input.txt --test_output ./test/pred.txt
+```
+
+### To Evaluate 
+
+This command will calculate the percentage of the time that one of the top 3 characters in `{test_dir}/pred.txt` matches `{test_dir}/answer.txt`
+
+```sh
+python ./src/eval.py --test_dir ./test
+```
 
 ## Input format
 

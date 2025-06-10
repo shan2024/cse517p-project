@@ -1,5 +1,12 @@
 *.py[cod]
-work/
+work/checkpoints
 output/
 submit/
 submit.zip
+.venv/
+/data/parsed_data
+test
+/work_models
+test/input.txt
+test/input.txt
+test/pred.txt
